@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validación de Patrullero</title>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <style>
+        body { background: #121212; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; user-select: none; }
+        .card { width: 300px; background: white; color: black; border-radius: 15px; padding: 20px; text-align: center; position: relative; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .shield { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; } /* Capa anti-clic */
+        .status-badge { padding: 10px; border-radius: 5px; font-weight: bold; margin-bottom: 20px; width: 80%; }
+        .active { background: #27ae60; color: white; }
+        .inactive { background: #c0392b; color: white; }
+        .photo { width: 150px; height: 180px; object-fit: cover; border: 3px solid #f1c40f; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="contenido">Cargando información...</div>
+
+    <script>
+        // PEGA AQUÍ TU MISMO firebaseConfig DEL PASO 1
+        const firebaseConfig = {
+            apiKey: "AIzaSyDO7h0NMdLiOK9_1UrI7mj4x_uaMbn4GI8",
+            authDomain: "huila-carnet.firebaseapp.com",
+            projectId: "huila-carnet",
+            storageBucket: "huila-carnet.firebasestorage.app",
+            messagingSenderId: "1012293106798",
+            appId: "1:1012293106798:web:0c1f6342852d77c5dbba7f"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Obtener ID del QR
+        const params = new URLSearchParams(window.location.search);
+        const id = params.get('id');
+
+        if (id) {
+            db.collection("patrulleros").doc(id).get().then((doc) => {
+                if (doc.exists) {
+                    const p = doc.data();
+                    const statusClass = p.status === 'activo' ? 'active' : 'inactive';
+                    const statusText = p.status === 'activo' ? '✅ PATRULLERO ACTIVO' : '❌ PATRULLERO INACTIVO';
+
+                    document.body.innerHTML = `
+                        <div class="status-badge ${statusClass}">${statusText}</div>
+                        <div class="card">
+                            <div class="shield"></div>
+                            <img src="${p.foto}" class="photo">
+                            <h2>${p.nombre}</h2>
+                            <p><b>C.C:</b> ${p.documento}</p>
+                            <p><b>RH:</b> ${p.rh}</p>
+                            <hr>
+                            <small>Validado por el Grupo de Patrulleros del Huila</small>
+                        </div>
+                    `;
+                } else {
+                    document.body.innerHTML = "<h1>⚠️ ERROR: Patrullero no encontrado o suplantación.</h1>";
+                }
+            });
+        }
+
+        // BLOQUEOS DE SEGURIDAD
+        document.addEventListener('contextmenu', e => e.preventDefault());
+        document.addEventListener('keydown', e => {
+            if (e.ctrlKey && (e.key === 's' || e.key === 'p' || e.key === 'u')) e.preventDefault();
+        });
+    </script>
+</body>
+</html>
