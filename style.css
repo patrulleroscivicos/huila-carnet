@@ -1,0 +1,364 @@
+:root {
+
+    --dark-bg: #0f0f0f;
+
+    --gold: #d4af37;
+
+    --white: #ffffff;
+
+}
+
+
+
+body {
+
+    font-family: 'Segoe UI', sans-serif; background-color: var(--dark-bg); color: #fff; margin: 0;
+
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+
+    min-height: 100vh; padding-top: 80px; box-sizing: border-box;
+
+}
+
+
+
+/* TOP BAR Y LOGO */
+
+.top-bar {
+
+    position: fixed; top: 0; left: 0; width: 100%; background: #000;
+
+    height: 80px; padding: 0 40px; border-bottom: 2px solid var(--gold);
+
+    display: flex; justify-content: space-between; align-items: center;
+
+    z-index: 1000; box-sizing: border-box;
+
+}
+
+.logo-container { display: flex; align-items: center; gap: 20px; height: 100%; }
+
+.main-logo { height: 65px; width: auto; object-fit: contain; }
+
+.brand-text { font-size: 14px; font-weight: bold; line-height: 1.2; text-align: left; }
+
+.gold { color: var(--gold); }
+
+
+
+/* SECCIÓN LOGIN */
+
+.login-layout { flex-grow: 1; display: flex; align-items: center; justify-content: center; width: 100%; }
+
+.login-card {
+
+    background: #1a1a1a; padding: 45px; border-radius: 15px;
+
+    border: 1px solid #333; width: 360px; text-align: center; margin: auto;
+
+}
+
+
+
+/* BOTONES ESTADO */
+
+.personnel-list { list-style: none; padding: 0; width: 100%; max-width: 900px; margin: 0 auto; }
+
+.status-badge { padding: 6px 15px; border-radius: 20px; color: white; border: none; cursor: pointer; font-size: 11px; font-weight: bold; min-width: 90px; }
+
+.bg-activo { background: #27ae60; }
+
+.bg-inactivo { background: #c0392b; }
+
+
+
+/* PANEL DE CONFIGURACIÓN GLOBAL */
+
+.admin-config-panel {
+
+    background: #1f1f1f;
+
+    padding: 20px;
+
+    border-radius: 12px;
+
+    border: 1px solid #333;
+
+    margin-bottom: 25px;
+
+}
+
+.config-grid {
+
+    display: grid;
+
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+
+    gap: 15px;
+
+    align-items: end;
+
+}
+
+
+
+/* ESTRUCTURA CARNÉ */
+
+.flip-card { width: 310px; height: 485px; perspective: 1000px; margin: 0 auto; cursor: pointer; }
+
+.flip-card-inner { position: relative; width: 100%; height: 100%; transition: transform 0.6s; transform-style: preserve-3d; }
+
+.flip-card.flipped .flip-card-inner { transform: rotateY(180deg); }
+
+.flip-card-front, .flip-card-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 15px; overflow: hidden; }
+
+
+
+/* FRENTE DEL CARNÉ */
+
+.flip-card-front {
+
+    background: linear-gradient(to bottom, #f1c40f 0%, #f1c40f 22%, #fff 42%, #2980b9 70%, #1a2a6c 100%);
+
+    display: flex; flex-direction: column; align-items: center;
+
+}
+
+.carnet-header { color: #000; font-weight: bold; padding: 25px 15px 10px; text-align: center; font-size: 14px; }
+
+.photo-box { width: 150px; height: 185px; border: 2px solid #fff; background: #eee; overflow: hidden; margin-top: 10px;}
+
+.photo-box img { width: 100%; height: 100%; object-fit: cover; }
+
+.info-box { color: #fff; text-align: center; width: 100%; padding: 10px; flex-grow: 1; }
+
+.txt-name { font-weight: bold; font-size: 17px; text-transform: uppercase; margin-bottom: 5px; }
+
+.txt-rank { font-size: 13px; border-top: 1px solid rgba(255,255,255,0.4); display: inline-block; padding-top: 5px; }
+
+.txt-data { font-weight: bold; font-size: 14px; margin-top: 5px; }
+
+
+
+/* RESPALDO */
+
+.flip-card-back {
+
+    background: white !important;
+
+    color: #333;
+
+    transform: rotateY(180deg);
+
+    position: relative;
+
+}
+
+
+
+.watermark-overlay {
+
+    position: absolute;
+
+    top: 50%; left: 50%;
+
+    transform: translate(-50%, -50%);
+
+    width: 250%;
+
+    height: 250%;
+
+    background-image: url('fondologo.png');
+
+    background-size: contain;
+
+    background-repeat: no-repeat;
+
+    background-position: center;
+
+    opacity: 0.15;
+
+    z-index: 1;
+
+}
+
+
+
+.back-content {
+
+    position: relative; z-index: 2;
+
+    padding: 30px; height: 100%;
+
+    display: flex; flex-direction: column;
+
+    justify-content: center;
+
+    align-items: center;
+
+    text-align: center; box-sizing: border-box;
+
+    gap: 55px;
+
+}
+
+
+
+.back-text {
+
+    font-size: 16px;
+
+    line-height: 1.5;
+
+    font-weight: 600;
+
+    color: #111;
+
+    margin: 0;
+
+}
+
+
+
+.signature-section {
+
+    width: 100%;
+
+    position: relative;
+
+}
+
+
+
+.signature-wrapper {
+
+    position: relative;
+
+    height: 10px;
+
+    width: 100%;
+
+}
+
+
+
+.signature-img {
+
+    position: absolute;
+
+    bottom: -5px;
+
+    left: 50%;
+
+    transform: translateX(-50%);
+
+    max-width: 190px;
+
+    max-height: 100px;
+
+    object-fit: contain;
+
+    z-index: 3;
+
+}
+
+
+
+.sig-line { border-top: 1.5px solid #000; width: 85%; margin: 0 auto 5px; }
+
+.signature-section strong { font-size: 13px; display: block; }
+
+.signature-section p { font-size: 12px; margin: 1px 0; font-weight: bold; }
+
+
+
+/* INTERFAZ GENERAL */
+
+.main-layout { display: flex; gap: 30px; flex-wrap: wrap; justify-content: center; margin-top: 20px; width: 100%; }
+
+.editor-panel { flex: 1; min-width: 320px; max-width: 400px; text-align: left;}
+
+.container { background: #1a1a1a; padding: 30px; border-radius: 15px; display: none; width: 90%; max-width: 1000px; border: 1px solid #333; }
+
+.active-section { display: block; }
+
+.header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;}
+
+
+
+.btn { padding: 12px 20px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
+
+.btn-primary { background: var(--gold); color: #000; width: 100%; }
+
+.btn-success { background: #27ae60; color: #fff; }
+
+.btn-danger { background: #c0392b; color: white; border:none; cursor: pointer; border-radius: 4px; }
+
+.btn-back { background: #444; color: white; margin-bottom: 15px; }
+
+.btn-logout { background: #c0392b; color: #fff; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+
+
+
+input { background: #2a2a2a; color: #fff; border: 1px solid #444; padding: 10px; width: 100%; border-radius: 6px; margin-top: 5px; box-sizing: border-box; }
+
+.form-group { margin-bottom: 15px; }
+
+.form-group label { display: block; font-weight: bold; text-align: left; margin-top: 10px; color: var(--gold); font-size: 13px; }
+
+.flip-hint { text-align: center; font-size: 12px; color: #888; margin-top: 10px; }
+
+/* AÑADIDOS PARA EL SISTEMA DE ROLES */
+
+#register-section {
+
+    display: none; /* Se oculta por defecto */
+
+}
+
+
+
+#register-section.active-section {
+
+    display: flex;
+
+}
+
+
+
+.login-card a {
+
+    text-decoration: none;
+
+    font-weight: bold;
+
+    transition: 0.3s;
+
+}
+
+
+
+.login-card a:hover {
+
+    text-decoration: underline;
+
+}
+
+
+
+/* Ocultar botones de administración cuando sea un usuario normal */
+
+.user-mode .btn-back,
+
+.user-mode .admin-config-panel,
+
+.user-mode .header-flex button,
+
+.user-mode .btn-danger {
+
+    display: none !important;
+
+
+
+}
+
