@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Carnetización - Huila</title>
+    <script>
+        // Ejecutar ANTES de renderizar el body: si es escaneo de QR, aplicar modo verificación
+        if(window.location.search.includes('carnet=')) {
+            document.documentElement.style.cssText = 'background:#0f0f0f;';
+            document.addEventListener('DOMContentLoaded', function() {
+                document.querySelectorAll('body > *').forEach(function(el) {
+                    if(el.id !== 'pantalla-validacion') el.style.setProperty('display','none','important');
+                });
+                var p = document.getElementById('pantalla-validacion');
+                if(p) p.style.setProperty('display','block','important');
+            });
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <style>
+        :root {
+            --dark-bg: #0f0f0f;
+            --gold: #d4af37;
+            --white: #ffffff;
+            --orange: #e67e22; /* Color Aspirante */
+        }
+
+        body { 
+            font-family: 'Segoe UI', sans-serif; background-color: var(--dark-bg); color: #fff; margin: 0; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            min-height: 100vh; padding-top: 80px; box-sizing: border-box;
+        }
+
+        /* TOP BAR Y LOGO */
+        .top-bar {
+            position: fixed; top: 0; left: 0; width: 100%; background: #000;
+            height: 80px; padding: 0 40px; border-bottom: 2px solid var(--gold);
+            display: flex; justify-content: space-between; align-items: center;
+            z-index: 1000; box-sizing: border-box;
+        }
+        .logo-container { display: flex; align-items: center; gap: 20px; height: 100%; }
+        .main-logo { height: 65px; width: auto; object-fit: contain; }
+        .brand-text { font-size: 14px; font-weight: bold; line-height: 1.2; text-align: left; }
+        .gold { color: var(--gold); }
+
+        /* SECCIÓN LOGIN */
+        .login-layout { flex-grow: 1; display: flex; align-items: center; justify-content: center; width: 100%; }
+        .login-card { 
+            background: #1a1a1a; padding: 45px; border-radius: 15px; 
+            border: 1px solid #333; width: 360px; text-align: center; margin: auto;
+        }
+
+        /* BOTONES ESTADO */
+        .personnel-list { list-style: none; padding: 0; width: 100%; max-width: 900px; margin: 0 auto; }
+        .status-badge { padding: 6px 15px; border-radius: 20px; color: white; border: none; cursor: pointer; font-size: 11px; font-weight: bold; min-width: 90px; }
+        .bg-activo { background: #27ae60; }
+        .bg-inactivo { background: #c0392b; }
+        .bg-aspirante { background: var(--orange); box-shadow: 0 0 8px var(--orange); } /* Naranja iluminado para aspirantes */
+
+        /* PANEL DE CONFIGURACIÓN GLOBAL */
+        .admin-config-panel {
+            background: #1f1f1f;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #333;
+            margin-bottom: 25px;
+        }
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            align-items: end;
+        }
+
+        /* ESTRUCTURA CARNÉ */
+        .flip-card { width: 265px; height: 420px; perspective: 1000px; margin: 0 auto; cursor: pointer; }
+        .flip-card-inner { position: relative; width: 100%; height: 100%; transition: transform 0.6s; transform-style: preserve-3d; }
+        .flip-card.flipped .flip-card-inner { transform: rotateY(180deg); }
+        .flip-card-front, .flip-card-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 15px; overflow: hidden; }
+
+        /* FRENTE DEL CARNÉ */
+        .flip-card-front {
+            background: linear-gradient(to bottom, #f1c40f 0%, #f1c40f 16%, #fff 32%, #2980b9 58%, #1a2a6c 100%);
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+            padding-bottom: 4px;
+        }
+        .carnet-header { color: #000; font-weight: 900; padding: 8px 10px 4px; text-align: center; font-size: 13px; line-height: 1.4; letter-spacing: 0.3px; }
+        .photo-box { width: 155px; height: 185px; border: 2px solid #fff; background: #eee; overflow: hidden; margin-top: 4px;}
+        .photo-box img { width: 100%; height: 100%; object-fit: cover; }
+        .info-box { color: #000; text-align: center; width: 100%; padding: 4px 10px 0px; }
+        .txt-name { font-weight: bold; font-size: 14px; text-transform: uppercase; margin-bottom: 1px; line-height: 1.2; }
+        .txt-rank { font-size: 12px; border-top: 1px solid rgba(0,0,0,0.3); display: inline-block; padding-top: 2px; margin-top: 1px; }
+        .txt-data { font-weight: bold; font-size: 12px; margin-top: 2px; }
+
+        /* RESPALDO */
+        .flip-card-back { 
+            background: white !important; 
+            color: #333; 
+            transform: rotateY(180deg); 
+            position: relative;
+        }
+
+        .watermark-overlay {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 250%; 
+            height: 250%; 
+            background-image: url('fondologo.png'); 
+            background-size: contain; 
+            background-repeat: no-repeat;
+            background-position: center;
+            opacity: 0.15; 
+            z-index: 1;
+        }
+
+        .back-content { 
+            position: relative; z-index: 2; 
+            padding: 30px; height: 100%; 
+            display: flex; flex-direction: column; 
+            justify-content: center; 
+            align-items: center;
+            text-align: center; box-sizing: border-box;
+            gap: 55px; 
+        }
+
+        .back-text { 
+            font-size: 16px; 
+            line-height: 1.5; 
+            font-weight: 600; 
+            color: #111; 
+            margin: 0; 
+        }
+
+        .signature-section { 
+            width: 100%; 
+            position: relative;
+        }
+
+        .signature-wrapper {
+            position: relative;
+            height: 10px; 
+            width: 100%;
+        }
+
+        .signature-img { 
+            position: absolute;
+            bottom: -5px; 
+            left: 50%;
+            transform: translateX(-50%); 
+            max-width: 190px; 
+            max-height: 100px; 
+            object-fit: contain; 
+            z-index: 3;
+        }
+
+        .sig-line { border-top: 1.5px solid #000; width: 85%; margin: 0 auto 5px; }
+        .signature-section strong { font-size: 13px; display: block; }
+        .signature-section p { font-size: 12px; margin: 1px 0; font-weight: bold; }
+
+        /* INTERFAZ GENERAL */
+        .main-layout { display: flex; gap: 30px; flex-wrap: wrap; justify-content: center; margin-top: 20px; width: 100%; }
+        .editor-panel { flex: 1; min-width: 320px; max-width: 400px; text-align: left;}
+        .container { background: #1a1a1a; padding: 30px; border-radius: 15px; display: none; width: 90%; max-width: 1000px; border: 1px solid #333; }
+        .active-section { display: block; }
+        .header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;}
+
+        .btn { padding: 12px 20px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
+        .btn-primary { background: var(--gold); color: #000; width: 100%; }
+        .btn-success { background: #27ae60; color: #fff; }
+        .btn-danger { background: #c0392b; color: white; border:none; cursor: pointer; border-radius: 4px; }
+        .btn-back { background: #444; color: white; margin-bottom: 15px; }
+        .btn-logout { background: #c0392b; color: #fff; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn-blue { background: #2980b9; color: white; }
+
+        input { background: #2a2a2a; color: #fff; border: 1px solid #444; padding: 10px; width: 100%; border-radius: 6px; margin-top: 5px; box-sizing: border-box; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: bold; text-align: left; margin-top: 10px; color: var(--gold); font-size: 13px; }
+        .flip-hint { text-align: center; font-size: 12px; color: #888; margin-top: 10px; }
+        
+        /* SISTEMA DE ROLES */
+        #register-section, #recovery-section { display: none; }
+        #register-section.active-section, #recovery-section.active-section { display: flex; }
+
+        .login-card a { text-decoration: none; font-weight: bold; transition: 0.3s; }
+        .login-card a:hover { text-decoration: underline; }
+
+        .user-mode .btn-back, 
+        .user-mode .admin-config-panel,
+        .user-mode .header-flex button,
+        .user-mode .admin-only {
+            display: none !important;
+        }
+
+        .admin-mode .user-only {
+            display: none !important;
+        }
+
+        /* FASES Y TIEMPOS */
+        details { background: #222; margin-bottom: 10px; border-radius: 8px; border-left: 3px solid var(--gold); }
+        summary { padding: 15px; font-weight: bold; cursor: pointer; outline: none; }
+        .details-content { padding: 15px; background: #1a1a1a; border-radius: 0 0 8px 8px; border-top: 1px solid #333; }
+        
+        .badge-graduado { background: #27ae60; color: white; padding: 3px 8px; border-radius: 4px; font-size: 10px; margin-left: 10px; vertical-align: middle; }
+        .tiempo-badge { background: #333; padding: 8px; border-radius: 6px; font-size: 12px; color: #aaa; margin-top: 5px; display: inline-block; }
+        
+        .file-list a { color: #3498db; font-size: 13px; text-decoration: none; display: block; margin-top: 5px; }
+        .file-list a:hover { text-decoration: underline; }
+
+        #panel-carnet-oculto { display: none; text-align: center; padding: 20px; color: #aaa; }
+    </style>
+</head>
+<body>
+<div id="pantalla-validacion" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#0f0f0f; z-index:9999; overflow-y:auto;">
+    <div style="max-width:420px; margin:0 auto; padding:30px 20px; text-align:center;">
+        <img src="fondologo.png" style="width:80px; margin-bottom:10px;" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22150%22 height=%22185%22%3E%3Crect width=%22150%22 height=%22185%22 fill=%22%23cccccc%22/%3E%3Ctext x=%2275%22 y=%2295%22 font-size=%2213%22 text-anchor=%22middle%22 fill=%22%23666%22%3EFOTO%3C/text%3E%3C/svg%3E'">
+        <div style="font-size:13px; font-weight:bold; color:#d4af37; letter-spacing:1px; margin-bottom:20px;">PATRULLEROS CÍVICOS · TRÁNSITO DEL HUILA</div>
+        <div id="val-carnet" style="width:310px; margin:0 auto 20px; border-radius:15px; overflow:hidden; box-shadow:0 0 30px rgba(212,175,55,0.3);">
+            <div style="background:linear-gradient(to bottom,#f1c40f 0%,#f1c40f 22%,#fff 42%,#2980b9 70%,#1a2a6c 100%); padding:20px 15px 10px; display:flex; flex-direction:column; align-items:center;">
+                <div style="color:#000; font-weight:bold; font-size:12px; text-align:center; margin-bottom:10px;">GRUPO DE PATRULLEROS CÍVICOS DE TRÁNSITO DEL HUILA</div>
+                <div style="width:130px; height:160px; border:2px solid #fff; background:#eee; overflow:hidden;">
+                    <img id="val-foto" src="" style="width:100%; height:100%; object-fit:cover;" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22150%22 height=%22185%22%3E%3Crect width=%22150%22 height=%22185%22 fill=%22%23cccccc%22/%3E%3Ctext x=%2275%22 y=%2295%22 font-size=%2213%22 text-anchor=%22middle%22 fill=%22%23666%22%3EFOTO%3C/text%3E%3C/svg%3E'">
+                </div>
+                <div style="color:#fff; text-align:center; margin-top:10px; width:100%;">
+                    <div id="val-nombre" style="font-weight:bold; font-size:17px; text-transform:uppercase;">...</div>
+                    <div id="val-rango" style="font-size:13px; border-top:1px solid rgba(255,255,255,0.4); display:inline-block; padding-top:5px; margin-top:4px;">...</div>
+                    <div id="val-doc" style="font-weight:bold; font-size:14px; margin-top:5px;">...</div>
+                    <div id="val-rh" style="font-weight:bold; font-size:13px;">...</div>
+                </div>
+            </div>
+        </div>
+        <div id="val-badge" style="padding:18px 20px; font-size:20px; font-weight:bold; border-radius:12px; margin:0 auto 20px; max-width:310px; background:#555;">
+            VERIFICANDO...
+        </div>
+        <div id="val-no-existe" style="display:none; background:#1a0000; border:2px solid #c0392b; border-radius:12px; padding:20px; margin-bottom:20px; color:#ff6b6b; font-size:14px; line-height:1.6;">
+            <div style="font-size:40px; margin-bottom:10px;">&#9940;</div>
+            <strong style="font-size:16px; display:block; margin-bottom:8px;">CARNÉ NO VÁLIDO</strong>
+            Este carné no existe en nuestra base de datos.<br>
+            El funcionario ha sido retirado o es una suplantación,<br>
+            por lo cual <strong>se invalida para el uso de sus funciones como Patrullero Cívico.</strong>
+        </div>
+        <div style="font-size:11px; color:#555; margin-bottom:15px;">Verificación oficial · Sistema de Carnetización Huila</div>
+    </div>
+</div>
+    <div class="top-bar">
+        <div class="logo-container">
+            <img src="fondologo.png" alt="Logo" class="main-logo" onerror="this.src='https://via.placeholder.com/65x65?text=Logo'">
+            <div class="brand-text">
+                <span class="gold">PATRULLEROS CÍVICOS</span> TRÁNSITO DEL<br>
+                <span class="white">HUILA</span>
+            </div>
+        </div>
+        <button id="logout-btn" class="btn-logout" onclick="logout()" style="display:none;">Cerrar Sesión</button>
+    </div>
+
+    <div id="login-section" class="container active-section login-layout">
+        <div class="login-card">
+            <h2>Acceso al Sistema</h2>
+            <div class="form-group">
+                <label>Usuario / Documento</label>
+                <input type="text" id="admin-user" placeholder="Admin o su C.C.">
+            </div>
+            <div class="form-group">
+                <label>Contraseña</label>
+                <input type="password" id="password" placeholder="••••••••">
+            </div>
+            <button class="btn btn-primary" onclick="login()">INGRESAR</button>
+            <p style="margin-top: 15px; font-size: 13px;"><a href="#" onclick="cambiarSeccion('recovery-section')" style="color: #aaa;">¿Olvidó su contraseña?</a></p>
+            <p style="margin-top: 5px; font-size: 13px;">¿Eres nuevo patrullero? <a href="#" onclick="cambiarSeccion('register-section')" style="color: var(--gold);">Regístrate aquí</a></p>
+        </div>
+    </div>
+
+    <div id="recovery-section" class="container login-layout">
+        <div class="login-card">
+            <h2 class="gold">Recuperar Acceso</h2>
+            <p style="font-size: 12px; color: #888; margin-bottom: 20px;">Ingrese su correo registrado para recibir las instrucciones.</p>
+            <div class="form-group">
+                <label>Correo Electrónico</label>
+                <input type="email" id="rec-email" placeholder="correo@ejemplo.com">
+            </div>
+            <button class="btn btn-primary" onclick="recuperarClave()">ENVIAR CÓDIGO</button>
+            <p style="margin-top: 15px; font-size: 13px;"><a href="#" onclick="cambiarSeccion('login-section')" style="color: var(--gold);">Volver al inicio</a></p>
+        </div>
+    </div>
+
+    <div id="register-section" class="container login-layout">
+        <div class="login-card">
+            <h2 class="gold">Registro de Aspirante</h2>
+            <p style="font-size: 12px; color: #888; margin-bottom: 20px;">Cree su cuenta para iniciar sus fases de admisión</p>
+            <div class="form-group">
+                <label>Nombre Completo</label>
+                <input type="text" id="reg-nombre" placeholder="Nombre completo">
+            </div>
+            <div class="form-group">
+                <label>Documento (Será su Usuario)</label>
+                <input type="text" id="reg-doc" placeholder="Número de C.C.">
+            </div>
+            <div class="form-group">
+                <label>Correo Electrónico</label>
+                <input type="email" id="reg-email" placeholder="correo@ejemplo.com">
+            </div>
+            <div class="form-group">
+                <label>Cree su Contraseña</label>
+                <input type="password" id="reg-pass" placeholder="••••••••">
+            </div>
+            <button class="btn btn-success" style="width: 100%;" onclick="registrarNuevoUsuario()">CREAR CUENTA</button>
+            <p style="margin-top: 15px; font-size: 13px;">¿Ya tienes cuenta? <a href="#" onclick="cambiarSeccion('login-section')" style="color: var(--gold);">Inicia sesión</a></p>
+        </div>
+    </div>
+
+    <div id="dashboard-section" class="container">
+        <div class="header-flex">
+            <h2>Personal y Aspirantes Registrados</h2>
+            <button class="btn btn-success" onclick="nuevoPatrullero()">+ AGREGAR NUEVO (Directo)</button>
+        </div>
+
+        <div class="admin-config-panel">
+            <h3 style="color: var(--gold); margin-top: 0; font-size: 16px;">⚙️ Configuración Administrativa</h3>
+            <div class="config-grid">
+                <div class="form-group">
+                    <label>Usuario Administrador</label>
+                    <input type="text" id="config-admin-user" placeholder="Nuevo usuario admin">
+                </div>
+                <div class="form-group">
+                    <label>Contraseña Administrador</label>
+                    <input type="password" id="config-admin-pass" placeholder="Nueva contraseña admin">
+                </div>
+                <button class="btn btn-danger" onclick="actualizarCredencialesAdmin()" style="height: 40px; margin-top: 25px;">CAMBIAR ACCESOS</button>
+            </div>
+            <hr style="border-color: #333; margin: 20px 0;">
+            <div class="config-grid">
+                <div class="form-group">
+                    <label>Nombre Presidente (Solo Web)</label>
+                    <input type="text" id="global-pres-nombre" placeholder="Nombre completo">
+                </div>
+                <div class="form-group">
+                    <label>C.C. Presidente (En Carné)</label>
+                    <input type="text" id="global-pres-cc" placeholder="C.C. 12.123.651 Neiva">
+                </div>
+                <div class="form-group">
+                    <label>Celular (En Carné)</label>
+                    <input type="text" id="global-pres-tel" placeholder="315-7830273">
+                </div>
+                <button class="btn btn-primary" onclick="guardarConfigGlobal()" style="height: 40px; margin-top: 25px;">ACTUALIZAR DATOS</button>
+            </div>
+        </div>
+
+        <ul class="personnel-list" id="personnel-list"></ul>
+    </div>
+
+    <div id="details-section" class="container">
+        <button class="btn btn-back" onclick="showDashboard()">← Regresar al listado</button>
+        <div class="main-layout">
+            <div class="editor-panel">
+                <h3 style="display: flex; align-items: center;">
+                    Expediente <span id="view-graduado-badge" class="badge-graduado">GRADUADO</span>
+                </h3>
+
+                <div class="form-group admin-only" style="background: #222; padding: 15px; border-radius: 8px;">
+                    <label style="margin-top:0;">Fecha de Ingreso (Activo desde):</label>
+                    <input type="date" id="fecha-ingreso" onchange="actualizarFechas()">
+                    <div class="tiempo-badge" id="tiempo-admin-view">Tiempo en el grupo: Calculando...</div>
+                </div>
+                <div class="form-group user-only">
+                    <div class="tiempo-badge" id="tiempo-user-view" style="width: 100%; box-sizing: border-box; text-align: center;">Tiempo en el grupo: Calculando...</div>
+                </div>
+
+                <details id="fase1-box">
+                    <summary>Fase 1: Documentación Requerida</summary>
+                    <div class="details-content">
+                        <p style="font-size: 12px; color: #aaa;">Suba los siguientes documentos en formato PDF para avanzar a la Fase 2.</p>
+                        
+                        <div class="form-group">
+                            <label>Hoja de Vida del Grupo</label>
+                            <input type="file" accept="application/pdf" onchange="cargarPDF(this, 'hojaVida')">
+                            <div class="file-list" id="link-hojaVida"></div>
+                        </div>
+                        <div class="form-group">
+                            <label>Certificado de Estudio</label>
+                            <input type="file" accept="application/pdf" onchange="cargarPDF(this, 'certEstudio')">
+                            <div class="file-list" id="link-certEstudio"></div>
+                        </div>
+                        <div class="form-group">
+                            <label>Certificado Bachiller</label>
+                            <input type="file" accept="application/pdf" onchange="cargarPDF(this, 'certBachiller')">
+                            <div class="file-list" id="link-certBachiller"></div>
+                        </div>
+                    </div>
+                </details>
+
+                <details id="fase2-box">
+                    <summary>Fase 2: Proceso de Graduación</summary>
+                    <div class="details-content text-center">
+                        <div class="user-only" style="font-size: 13px; color: #aaa;">
+                            Una vez completada la Fase 1, el administrador validará su proceso para otorgarle el grado y desbloquear el carné.
+                        </div>
+                        <div class="admin-only">
+                            <button id="btn-graduar" class="btn btn-success" onclick="forzarGraduacion()">GRADUAR ASPIRANTE</button>
+                            <p style="font-size: 11px; margin-top: 10px; color: #888;">Al graduarlo, podrá asignarlo como Activo y él podrá generar su carné.</p>
+                        </div>
+                    </div>
+                </details>
+
+                <details id="fase3-box">
+                    <summary>Fase 3: Datos de Carnetización</summary>
+                    <div class="details-content" id="fase3-content">
+                        <div class="form-group">
+                            <label>Nombre Completo</label>
+                            <input type="text" id="edit-name" oninput="updateLivePreview()">
+                        </div>
+                        <div class="form-group">
+                            <label>Rango o Puesto</label>
+                            <input type="text" id="edit-rango" oninput="updateLivePreview()">
+                        </div>
+                        <div class="form-group">
+                            <label>Tipo de Documento</label>
+                            <select id="edit-doc-type" onchange="updateLivePreview()" style="background: #2a2a2a; color: #fff; border: 1px solid #444; padding: 10px; width: 100%; border-radius: 6px;">
+                                <option value="C.C.">Cédula de Ciudadanía (C.C.)</option>
+                                <option value="T.I.">Tarjeta de Identidad (T.I.)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Numero de Documento</label>
+                            <input type="text" id="edit-doc-num" oninput="updateLivePreview()">
+                        </div>
+                        <div class="form-group">
+                            <label>RH</label>
+                            <input type="text" id="edit-rh" oninput="updateLivePreview()">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Foto del Patrullero</label>
+                            <input type="file" accept="image/*" onchange="cargarImagen(this, 'foto')">
+                        </div>
+                        
+                        <div class="form-group admin-only">
+                            <label>Imagen de la Firma (Solo Admin)</label>
+                            <input type="file" id="input-firma" accept="image/*" onchange="cargarImagen(this, 'firma')">
+                            <button class="btn-danger" onclick="quitarImagen('firma')" style="margin-top: 5px; padding: 5px; font-size: 10px; display: inline-block;">Quitar Firma</button>
+                        </div>
+
+                        <div class="form-group user-only" style="background: rgba(212, 175, 55, 0.1); padding: 15px; border-radius: 8px; border: 1px solid var(--gold); margin-top: 20px;">
+                            <label style="display: flex; gap: 10px; align-items: flex-start; font-size: 11px; color: #ddd; cursor: pointer; text-align: justify; margin-top: 0;">
+                                <input type="checkbox" id="check-datos" onchange="validarAceptacionDatos()" style="width: 20px; height: 20px; margin: 0;">
+                                Acepto la política de tratamiento de datos personales regida en Colombia (Ley 1581 de 2012) y autorizo al Grupo de Patrulleros Cívicos a usar esta información y mi fotografía exclusivamente para la expedición de este carné.
+                            </label>
+                        </div>
+                        <button class="btn" style="background:#2ecc71; color:white; width:100%; margin-top:20px; font-weight:bold;" onclick="guardarTodo()">
+                            ☁️ GUARDAR EN LA NUBE (BASE DE DATOS)</button>
+                        <button class="btn admin-only" style="background:#555; color:white; width:100%; margin-top:8px; font-size:12px;" onclick="probarConexionSheetDB()">
+                            🔌 PROBAR CONEXIÓN CON BASE DE DATOS</button>
+                          
+                        <button class="btn btn-blue user-only" id="btn-guardar-carnet" onclick="guardarCarnetUsuario()" style="margin-top: 10px; width: 100%; opacity: 0.5; pointer-events: none;">FINALIZAR Y GUARDAR CARNÉ</button>
+
+                        <button class="btn btn-primary download-btn admin-only" onclick="descargarPDF()" style="margin-top: 20px;">DESCARGAR CARNÉ (PDF)</button>
+                        <button class="btn btn-danger admin-only" onclick="eliminarPatrullero()" style="margin-top:20px; width: 100%;">Eliminar Registro Completo</button>
+                    </div>
+                </details>
+
+            </div>
+
+            <div class="preview-panel" id="panel-carnet-visible">
+                <div class="flip-card" id="card-element">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-front" id="carnet-frente">
+                            <div class="carnet-header">GRUPO DE<br>PATRULLEROS CÍVICOS<br>DE TRÁNSITO DEL HUILA</div>
+                            <div class="photo-area">
+                                <div class="photo-box">
+                                    <img id="preview-photo" src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22150%22 height=%22185%22%3E%3Crect width=%22150%22 height=%22185%22 fill=%22%23cccccc%22/%3E%3Ctext x=%2275%22 y=%2295%22 font-size=%2213%22 text-anchor=%22middle%22 fill=%22%23666%22%3EFOTO%3C/text%3E%3C/svg%3E">
+                                </div>
+                            </div>
+                            <div class="info-box">
+                                <div id="view-name" class="txt-name">NOMBRE</div>
+                                <div class="txt-rank"><strong id="view-rango">RANGO</strong></div>
+                                <div id="view-doc" class="txt-data">C.C. 000.000</div>
+                                <div id="view-rh" class="txt-data">RH: O+</div>
+                            </div>
+                            <div id="qr-container" style="background: white; padding: 2px; border-radius: 4px; display: inline-block; margin-top: 4px; box-shadow: 0 0 5px rgba(0,0,0,0.3);">
+                                <canvas id="qr-canvas" width="72" height="72" style="display: block; width: 72px; height: 72px;"></canvas>
+                            </div>
+                        </div>
+                        
+                        <div class="flip-card-back" id="carnet-respaldo">
+                            <div class="watermark-overlay"></div>
+                            
+                            <div class="back-content">
+                                <p class="back-text">Este Carné lo acredita como Patrullero (a) Cívico (a) por lo tanto se solicita a las autoridades Civiles, Militares, de Policía prestarle toda colaboración y apoyo en el ejercicio de las funciones que cumple.</p>
+                                
+                                <div class="signature-section">
+                                    <div class="signature-wrapper">
+                                        <img id="preview-signature" class="fondologo.png" src="">
+                                    </div>
+                                    <div class="sig-line"></div>
+                                    <strong>Firma Autorizada</strong>
+                                    <p id="view-pres-cc">C.C. 12.123.651 Neiva</p>
+                                    <p id="view-pres-tel">315-7830273</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            
+            <div id="panel-carnet-oculto">
+                <h3>🔒 Carné Bloqueado</h3>
+                <p>El patrullero no ha aceptado la política de tratamiento de datos o no ha finalizado su Fase 3.</p>
+            </div>
+
+        </div>
+    </div>
+    
+   <script>
+    // Este es el nuevo motor de tu base de datos en Google Sheets
+    // Google Sheets como base de datos
+    const SHEET_ID = '1nzJ1-VeRLWIBkBG01Qoz84O-jUFYKmDVGOZz91YZksc';
+    const SHEET_NAME = 'Hoja 1';
+    // URL para LEER datos (pública)
+    const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}`;
+    // URL para ESCRIBIR datos (usa Apps Script - se configura abajo)
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzvn_mJOuDhzzWIElClTCUwABPxrE7qOmGMOcecvxY15aLJdZFyqH68vgd9Bcp7UD3yYQ/exec';
+
+    // 1. CONTROL DE CARNÉ GIRATORIO
+    document.getElementById('card-element').onclick = function() {
+        this.classList.toggle('flipped');
+    };
+
+    // 2. VARIABLES GLOBALES Y BASES DE DATOS
+    let personal = JSON.parse(localStorage.getItem('db_patrulleros_huila')) || [];
+    let usuariosApp = JSON.parse(localStorage.getItem('db_usuarios_huila')) || [];
+    let indexActual = null;
+    let esAdmin = false;
+
+    // SEGURIDAD: Control de intentos fallidos
+    let intentosFallidos = 0;
+    let bloqueadoHasta = parseInt(localStorage.getItem('bloqueo_hasta') || '0');
+    const MAX_INTENTOS = 3;
+    const TIEMPO_BLOQUEO = 5 * 60 * 1000; // 5 minutos
+
+    let configGlobal = JSON.parse(localStorage.getItem('config_global_huila')) || {
+        nombre: "Nombre del Presidente",
+        cc: "C.C. 12.123.651 Neiva",
+        tel: "315-7830273"
+    };
+
+    // 3. FUNCIONES DE LOGIN Y ROLES
+    async function login() {
+        const user = document.getElementById('admin-user').value.trim();
+        const pass = document.getElementById('password').value;
+        const btnLogin = document.querySelector("button[onclick='login()']");
+
+        // Verificar bloqueo
+        const ahora = Date.now();
+        if(bloqueadoHasta > ahora) {
+            const minutos = Math.ceil((bloqueadoHasta - ahora) / 60000);
+            alert(`⛔ Acceso bloqueado por ${minutos} minuto(s) debido a múltiples intentos fallidos.`);
+            return;
+        }
+
+        if(!user || !pass) { alert("Completa todos los campos."); return; }
+
+        // Primero verificar si es usuario local (patrullero)
+        const usuarioEncontrado = usuariosApp.find(u => u.doc === user && u.pass === pass);
+        if(usuarioEncontrado) {
+            intentosFallidos = 0;
+            document.body.classList.add('user-mode');
+            document.body.classList.remove('admin-mode');
+            document.getElementById('logout-btn').style.display = "block";
+            esAdmin = false;
+            const pIndex = personal.findIndex(p => p.documento === user);
+            if(pIndex !== -1) {
+                verDetalle(pIndex);
+                document.getElementById('details-section').style.display = 'block';
+            } else {
+                alert("Error: No se encontró expediente para este usuario.");
+            }
+            return;
+        }
+
+        // Verificar admin via Apps Script (credenciales nunca en el navegador)
+        btnLogin.innerText = "⏳ VERIFICANDO...";
+        btnLogin.disabled = true;
+        try {
+            const params = new URLSearchParams({ accion: 'login', user, pass });
+            await fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' });
+
+            // Guardar intento en Sheet para auditoría y esperar respuesta via token
+            // Como no-cors no permite leer respuesta, usamos un segundo GET para verificar token
+            await new Promise(r => setTimeout(r, 1500));
+            const tokenParams = new URLSearchParams({ accion: 'verificar_token', user });
+            const tokenRes = await fetch(APPS_SCRIPT_URL + '?' + tokenParams.toString());
+            const tokenData = await tokenRes.json();
+
+            if(tokenData.ok && tokenData.autorizado) {
+                intentosFallidos = 0;
+                localStorage.removeItem('bloqueo_hasta');
+                document.body.classList.remove('user-mode');
+                document.body.classList.add('admin-mode');
+                document.getElementById('logout-btn').style.display = "block";
+                esAdmin = true;
+                showDashboard();
+            } else {
+                intentosFallidos++;
+                registrarIntentoFallido(user);
+                if(intentosFallidos >= MAX_INTENTOS) {
+                    bloqueadoHasta = Date.now() + TIEMPO_BLOQUEO;
+                    localStorage.setItem('bloqueo_hasta', bloqueadoHasta);
+                    alert(`⛔ Demasiados intentos fallidos. Acceso bloqueado por 5 minutos.\n\nSe ha registrado este intento de acceso.`);
+                } else {
+                    alert(`❌ Usuario o contraseña incorrectos.\n\nIntentos restantes: ${MAX_INTENTOS - intentosFallidos}`);
+                }
+            }
+        } catch(e) {
+            // Fallback: si falla la red, bloquear igual
+            intentosFallidos++;
+            alert("❌ Usuario o contraseña incorrectos.");
+        } finally {
+            btnLogin.innerText = "INGRESAR";
+            btnLogin.disabled = false;
+        }
+    }
+
+    function registrarIntentoFallido(user) {
+        // Registrar intento fallido en Apps Script para auditoría
+        const params = new URLSearchParams({
+            accion: 'log_intento',
+            user: user,
+            hora: new Date().toISOString(),
+            agente: navigator.userAgent.substring(0, 100)
+        });
+        fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' }).catch(() => {});
+    }
+
+    // 4. FUNCIONES ADMINISTRATIVAS
+    async function actualizarCredencialesAdmin() {
+        const newUser = document.getElementById('config-admin-user').value.trim();
+        const newPass = document.getElementById('config-admin-pass').value;
+        if(newUser && newPass) {
+            const params = new URLSearchParams({ accion: 'cambiar_credenciales', newUser, newPass });
+            await fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' });
+            alert("✅ Credenciales actualizadas en el servidor de forma segura.\n\nUsa las nuevas credenciales en tu próximo inicio de sesión.");
+        } else {
+            alert("Llene ambos campos para cambiar credenciales.");
+        }
+    }
+
+    function guardarConfigGlobal() {
+        const nuevoNom = document.getElementById('global-pres-nombre').value;
+        const nuevoCC = document.getElementById('global-pres-cc').value;
+        const nuevoTel = document.getElementById('global-pres-tel').value;
+
+        if(nuevoNom && nuevoCC && nuevoTel) {
+            configGlobal = { nombre: nuevoNom, cc: nuevoCC, tel: nuevoTel };
+            localStorage.setItem('config_global_huila', JSON.stringify(configGlobal));
+            aplicarConfigGlobal();
+            alert("Configuración de autoridad actualizada correctamente.");
+        } else {
+            alert("Por favor completa todos los campos.");
+        }
+    }
+
+    function aplicarConfigGlobal() {
+        if(document.getElementById('global-pres-nombre')) {
+            document.getElementById('global-pres-nombre').value = configGlobal.nombre;
+            document.getElementById('global-pres-cc').value = configGlobal.cc;
+            document.getElementById('global-pres-tel').value = configGlobal.tel;
+        }
+        const viewCC = document.getElementById('view-pres-cc');
+        const viewTel = document.getElementById('view-pres-tel');
+        if(viewCC) viewCC.innerText = configGlobal.cc;
+        if(viewTel) viewTel.innerText = configGlobal.tel;
+    }
+
+    // 5. REGISTRO DE USUARIOS
+    function registrarNuevoUsuario() {
+        const nom = document.getElementById('reg-nombre').value;
+        const doc = document.getElementById('reg-doc').value;
+        const email = document.getElementById('reg-email').value;
+        const pass = document.getElementById('reg-pass').value;
+
+        if(nom && doc && email && pass) {
+            if(usuariosApp.find(u => u.doc === doc)) {
+                alert("Este documento ya está registrado.");
+                return;
+            }
+
+            usuariosApp.push({ nom, doc, email, pass, rol: 'usuario' });
+            
+            personal.push({ 
+                nombre: nom, 
+                tipoDoc: "C.C.", 
+                documento: doc, 
+                rh: "O+", 
+                foto: "", 
+                firma: "",
+                status: "aspirante", 
+                fase2Completada: false, 
+                carnetGuardado: false, 
+                fechaIngreso: "", 
+                fechaInactivo: "",
+                archivos: { hojaVida: "", certEstudio: "", certBachiller: "" }
+            });
+
+            localStorage.setItem('db_usuarios_huila', JSON.stringify(usuariosApp));
+            localStorage.setItem('db_patrulleros_huila', JSON.stringify(personal));
+
+            alert("Registro exitoso. Ahora puedes iniciar sesión.");
+            
+            document.getElementById('reg-nombre').value = '';
+            document.getElementById('reg-doc').value = '';
+            document.getElementById('reg-email').value = '';
+            document.getElementById('reg-pass').value = '';
+
+            cambiarSeccion('login-section');
+        } else {
+            alert("Por favor completa todos los campos.");
+        }
+    }
+
+    function recuperarClave() {
+        const email = document.getElementById('rec-email').value;
+        if(!email) { alert("Ingrese un correo."); return; }
+        const user = usuariosApp.find(u => u.email === email);
+        if(user) {
+            const codigo = Math.floor(1000 + Math.random() * 9000);
+            const resp = prompt(`Se ha enviado un código a su correo (SIMULACIÓN: el código es ${codigo}). Ingréselo aquí:`);
+            if(resp == codigo) {
+                const nuevaClave = prompt("Ingrese su nueva contraseña:");
+                if(nuevaClave) {
+                    user.pass = nuevaClave;
+                    localStorage.setItem('db_usuarios_huila', JSON.stringify(usuariosApp));
+                    alert("Contraseña actualizada con éxito.");
+                    cambiarSeccion('login-section');
+                }
+            } else {
+                alert("Código incorrecto.");
+            }
+        } else {
+            alert("Correo no encontrado en la base de datos.");
+        }
+    }
+
+    // 6. RENDERIZADO DEL DASHBOARD
+    function renderizarLista() {
+        const lista = document.getElementById('personnel-list');
+        lista.innerHTML = "";
+        personal.forEach((p, index) => {
+            const li = document.createElement('li');
+            li.style.cssText = "background:#222; margin:10px 0; padding:15px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; border-left:4px solid #d4af37;";
+            
+            let claseEstado = '';
+            let textoEstado = '';
+            
+            if(p.status === 'activo') { claseEstado = 'bg-activo'; textoEstado = 'Activo'; }
+            else if(p.status === 'inactivo') { claseEstado = 'bg-inactivo'; textoEstado = 'Inactivo'; }
+            else { claseEstado = 'bg-aspirante'; textoEstado = 'Aspirante'; }
+
+            let carnetIcon = p.carnetGuardado ? "✅" : "⏳";
+
+            li.innerHTML = `
+                <div onclick="verDetalle(${index})" style="cursor:pointer; flex-grow:1;">
+                    <b style="color:#d4af37;">${p.nombre}</b> <span style="font-size:10px;">${carnetIcon}</span><br>
+                    <small style="color:#aaa;">${p.tipoDoc || 'C.C.'} ${p.documento}</small>
+                </div>
+                <button class="status-badge ${claseEstado}" onclick="cambiarEstado(${index})" ${!p.fase2Completada && p.status === 'aspirante' ? 'disabled title="Debe graduarse primero"' : ''}>
+                    ${textoEstado}
+                </button>
+            `;
+            lista.appendChild(li);
+        });
+        localStorage.setItem('db_patrulleros_huila', JSON.stringify(personal));
+    }
+
+    function cambiarEstado(index) {
+        const p = personal[index];
+        if(!p.fase2Completada && p.status === 'aspirante') {
+            alert("Un aspirante no puede ser Activo sin antes cumplir la Fase 2 (Graduación).");
+            return;
+        }
+
+        if(p.status === 'aspirante' || p.status === 'inactivo') {
+            p.status = 'activo';
+            if(!p.fechaIngreso) p.fechaIngreso = new Date().toISOString().split('T')[0];
+            p.fechaInactivo = ''; 
+        } else {
+            p.status = 'inactivo';
+            p.fechaInactivo = new Date().toISOString().split('T')[0];
+        }
+        renderizarLista();
+    }
+
+    // 7. DETALLE DE USUARIO Y ARCHIVOS
+    function verDetalle(index) {
+        indexActual = index;
+        const p = personal[index];
+        if(!p.archivos) p.archivos = { hojaVida: "", certEstudio: "", certBachiller: "" };
+        
+        document.getElementById('edit-name').value = p.nombre;
+        document.getElementById('edit-rango').value = p.rango || "";
+        if(document.getElementById('edit-doc-type')) {
+            document.getElementById('edit-doc-type').value = p.tipoDoc || "C.C.";
+        }
+        document.getElementById('edit-doc-num').value = p.documento;
+        document.getElementById('edit-rh').value = p.rh;
+        document.getElementById('preview-photo').src = p.foto || "data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22150%22 height=%22185%22%3E%3Crect width=%22150%22 height=%22185%22 fill=%22%23ccc%22/%3E%3C/svg%3E";
+        document.getElementById('preview-signature').src = p.firma || "";
+        document.getElementById('fecha-ingreso').value = p.fechaIngreso || "";
+
+        // Lógica de Fases Visuales
+        if(p.fase2Completada) {
+            document.getElementById('view-graduado-badge').style.display = "inline-block";
+            document.getElementById('btn-graduar').style.display = "none";
+            document.getElementById('fase3-box').open = true;
+        } else {
+            document.getElementById('view-graduado-badge').style.display = "none";
+            document.getElementById('btn-graduar').style.display = "inline-block";
+            document.getElementById('fase3-box').open = false;
+        }
+
+        // Archivos PDF Fase 1
+        mostrarEnlacePDF('hojaVida', p.archivos.hojaVida, "Hoja de Vida");
+        mostrarEnlacePDF('certEstudio', p.archivos.certEstudio, "Cert. Estudio");
+        mostrarEnlacePDF('certBachiller', p.archivos.certBachiller, "Cert. Bachiller");
+
+        // Visibilidad Carnet por privacidad
+        if(esAdmin && !p.carnetGuardado && p.status === 'aspirante') {
+            document.getElementById('panel-carnet-visible').style.display = 'none';
+            document.getElementById('panel-carnet-oculto').style.display = 'block';
+        } else {
+            document.getElementById('panel-carnet-visible').style.display = 'block';
+            document.getElementById('panel-carnet-oculto').style.display = 'none';
+        }
+
+        const chkDatos = document.getElementById('check-datos');
+        if(chkDatos) { chkDatos.checked = false; validarAceptacionDatos(); }
+
+        aplicarConfigGlobal();
+        updateLivePreview();
+        calcularTiempo(p);
+        cambiarSeccion('details-section');
+    }
+
+    function cargarImagen(input, tipo) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                if(tipo === 'foto') {
+                    document.getElementById('preview-photo').src = e.target.result;
+                    personal[indexActual].foto = e.target.result;
+                } else if(tipo === 'firma') {
+                    document.getElementById('preview-signature').src = e.target.result;
+                    personal[indexActual].firma = e.target.result;
+                }
+                localStorage.setItem('db_patrulleros_huila', JSON.stringify(personal));
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function cargarPDF(input, tipo) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                personal[indexActual].archivos[tipo] = e.target.result;
+                localStorage.setItem('db_patrulleros_huila', JSON.stringify(personal));
+                mostrarEnlacePDF(tipo, e.target.result, "Documento subido");
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function mostrarEnlacePDF(tipo, base64, nombreInfo) {
+        const container = document.getElementById(`link-${tipo}`);
+        if(base64) {
+            container.innerHTML = `✅ <a href="${base64}" download="${nombreInfo}_${personal[indexActual].nombre}.pdf">Descargar / Ver</a>`;
+        } else {
+            container.innerHTML = `<span style="color:#888; font-size:12px;">Sin archivo</span>`;
+        }
+    }
+
+    function quitarImagen(tipo) {
+        if(confirm(`¿Seguro que deseas eliminar la firma?`)) {
+            if(tipo === 'firma') {
+                document.getElementById('preview-signature').src = "";
+                personal[indexActual].firma = "";
+                document.getElementById('input-firma').value = "";
+            }
+            localStorage.setItem('db_patrulleros_huila', JSON.stringify(personal));
+        }
+    }
+
+    // 8. LÓGICAS DE TIEMPO Y GRADUACIÓN
+    function forzarGraduacion() {
+        const p = personal[indexActual];
+        p.fase2Completada = true;
+        localStorage.setItem('db_patrulleros_huila', JSON.stringify(personal));
+        alert(`El aspirante ${p.nombre} ha sido graduado exitosamente.`);
+        verDetalle(indexActual);
+        if(esAdmin) renderizarLista();
+    }
+
+    function actualizarFechas() {
+        const dateVal = document.getElementById('fecha-ingreso').value;
+        personal[indexActual].fechaIngreso = dateVal;
+        localStorage.setItem('db_patrulleros_huila', JSON.stringify(personal));
+        calcularTiempo(personal[indexActual]);
+    }
+
+    function calcularTiempo(p) {
+        let strResultado = "Sin fecha de ingreso definida";
+        if(p.fechaIngreso) {
+            let fechaInicio = new Date(p.fechaIngreso);
+            let fechaFin = (p.status === 'inactivo' && p.fechaInactivo) ? new Date(p.fechaInactivo) : new Date();
+            let meses = (fechaFin.getFullYear() - fechaInicio.getFullYear()) * 12;
+            meses -= fechaInicio.getMonth();
+            meses += fechaFin.getMonth();
+            if(meses < 0) meses = 0;
+            let años = Math.floor(meses / 12);
+            let mesesRestantes = meses % 12;
+            let txtArr = [];
+            if(años > 0) txtArr.push(`${años} año(s)`);
+            if(mesesRestantes > 0 || años === 0) txtArr.push(`${mesesRestantes} mes(es)`);
+            strResultado = txtArr.join(' y ');
+            if(p.status === 'inactivo') strResultado += " (Pausado)";
+        }
+        document.getElementById('tiempo-admin-view').innerText = `Tiempo: ${strResultado}`;
+        document.getElementById('tiempo-user-view').innerText = `Tiempo: ${strResultado}`;
+    }
+
+    // 9. CARNETIZACIÓN LIVE Y GUARDADO
+    function updateLivePreview() {
+        const nom = document.getElementById('edit-name').value;
+        const rango = document.getElementById('edit-rango').value;
+        const doc = document.getElementById('edit-doc-num').value;
+        const rh = document.getElementById('edit-rh').value;
+
+        document.getElementById('view-name').innerText = nom || "NOMBRE";
+        document.getElementById('view-rango').innerText = rango || "RANGO";
+        document.getElementById('view-doc').innerText = "C.C. " + (doc || "000.000");
+        document.getElementById('view-rh').innerText = "RH: " + (rh || "O+");
+
+        // URL base fija de GitHub Pages
+        const baseUrl = 'https://patrulleroscivicos.github.io/huila-carnet/index.html';
+        const docLimpio = doc.replace(/\./g, '');
+        const qrUrl = baseUrl + '?carnet=' + docLimpio;
+        
+        new QRious({
+            element: document.getElementById('qr-canvas'),
+            value: qrUrl,
+            size: 72
+        });
+
+        // Mostrar la URL del QR para verificación (solo visible en modo edición)
+        // URL del QR oculta intencionalmente
+    }
+    
+    function validarAceptacionDatos() {
+        const chk = document.getElementById('check-datos');
+        const btn = document.getElementById('btn-guardar-carnet');
+        if(chk && btn) {
+            if(chk.checked) {
+                btn.style.opacity = "1";
+                btn.style.pointerEvents = "auto";
+            } else {
+                btn.style.opacity = "0.5";
+                btn.style.pointerEvents = "none";
+            }
+        }
+    }
+
+    function guardarCarnetUsuario() {
+        personal[indexActual].carnetGuardado = true;
+        localStorage.setItem('db_patrulleros_huila', JSON.stringify(personal));
+        alert("Su carné se ha creado exitosamente.");
+    }
+
+    // ==========================================
+    // FUNCIÓN PARA DESCARGAR EL PDF (CORREGIDA)
+    // ==========================================
+    async function descargarPDF() {
+        const btn = document.querySelector("button[onclick='descargarPDF()']");
+        btn.innerText = "⏳ GENERANDO PDF...";
+        btn.disabled = true;
+
+        const { jsPDF } = window.jspdf;
+        const cardElement = document.getElementById('card-element');
+        const frente = document.getElementById('carnet-frente');
+        const respaldo = document.getElementById('carnet-respaldo');
+
+        // Quitar el flip para capturar ambas caras planas
+        const wasFlipped = cardElement.classList.contains('flipped');
+        cardElement.classList.remove('flipped');
+        cardElement.style.perspective = 'none';
+        frente.style.position = 'relative';
+        frente.style.transform = 'none';
+        frente.style.backfaceVisibility = 'visible';
+        respaldo.style.position = 'relative';
+        respaldo.style.transform = 'none';
+        respaldo.style.backfaceVisibility = 'visible';
+
+        try {
+            // Esperar un frame para que el DOM se actualice
+            await new Promise(r => setTimeout(r, 300));
+
+            const opciones = {
+                scale: 3,
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: null,
+                logging: false
+            };
+
+            const canvasF = await html2canvas(frente, opciones);
+            const canvasR = await html2canvas(respaldo, { ...opciones, backgroundColor: '#ffffff' });
+
+            const doc = new jsPDF({ unit: 'mm', format: [54, 86], orientation: 'portrait' });
+            doc.addImage(canvasF.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 54, 86);
+            doc.addPage();
+            doc.addImage(canvasR.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 54, 86);
+
+            const nombre = personal[indexActual].nombre.replace(/[^a-zA-Z0-9]/g, '_');
+            doc.save(`Carnet_${nombre}.pdf`);
+
+        } catch (error) {
+            console.error("Error PDF:", error);
+            alert("Error al generar el PDF: " + error.message);
+        } finally {
+            // Restaurar el estado original del carné
+            frente.style.position = '';
+            frente.style.transform = '';
+            frente.style.backfaceVisibility = '';
+            respaldo.style.position = '';
+            respaldo.style.transform = '';
+            respaldo.style.backfaceVisibility = '';
+            cardElement.style.perspective = '';
+            if (wasFlipped) cardElement.classList.add('flipped');
+            btn.innerText = "DESCARGAR CARNÉ (PDF)";
+            btn.disabled = false;
+        }
+    }
+
+    // ==========================================
+    // LEER DATOS DESDE GOOGLE SHEETS
+    // ==========================================
+    async function leerDesdeSheets() {
+        try {
+            const res = await fetch(SHEET_CSV_URL);
+            const text = await res.text();
+            // Google devuelve JSONP: /*O_o*/\ngoogle.visualization.Query.setResponse({...})
+            const json = JSON.parse(text.replace(/^[^(]+\(/, '').replace(/\);?$/, ''));
+            const cols = json.table.cols.map(c => c.label.toLowerCase().trim());
+            const rows = json.table.rows || [];
+            return rows.map(row => {
+                const obj = {};
+                cols.forEach((col, i) => {
+                    obj[col] = row.c[i] ? (row.c[i].v !== null ? String(row.c[i].v) : '') : '';
+                });
+                return obj;
+            });
+        } catch(e) {
+            console.error('Error leyendo Sheets:', e);
+            return [];
+        }
+    }
+
+    async function probarConexionSheetDB() {
+        try {
+            alert("⏳ Probando conexión con Google Sheets...");
+            const datos = await leerDesdeSheets();
+            alert("✅ Conexión exitosa con Google Sheets.\n\nRegistros encontrados: " + datos.length);
+        } catch(e) {
+            alert("❌ Error: " + e.message);
+        }
+    }
+
+    // ==========================================
+    // FUNCIÓN PARA GUARDAR EN LA NUBE Y SISTEMA (CORREGIDA)
+    // ==========================================
+    async function guardarTodo() {
+        const btn = document.querySelector("button[onclick='guardarTodo()']");
+        const p = personal[indexActual];
+
+        // 1. Tomamos los datos de las casillas y los guardamos en el objeto
+        p.nombre = document.getElementById('edit-name').value.trim();
+        p.rango = document.getElementById('edit-rango').value.trim();
+        p.documento = document.getElementById('edit-doc-num').value.trim();
+        p.rh = document.getElementById('edit-rh').value.trim();
+        
+        const tipoDocInput = document.getElementById('edit-doc-type');
+        if (tipoDocInput) p.tipoDoc = tipoDocInput.value;
+
+        // 2. Guardamos en la memoria local PRIMERO con los datos ya actualizados
+        localStorage.setItem('db_patrulleros_huila', JSON.stringify(personal));
+
+        try {
+            btn.innerText = "⏳ SINCRONIZANDO...";
+            btn.disabled = true;
+
+            const payload = {
+                documento: p.documento,
+                nombre: p.nombre,
+                rango: p.rango || "PATRULLERO",
+                rh: p.rh,
+                status: p.status || "activo",
+                foto: p.foto || ""
+            };
+
+            if (!APPS_SCRIPT_URL) {
+                // Sin Apps Script configurado: solo guardar local
+                alert("✅ Datos guardados localmente.\n\n⚠️ Para sincronizar con Google Sheets configura el Apps Script (ver instrucciones del administrador).");
+                updateLivePreview();
+                renderizarLista();
+                return;
+            }
+
+            // Enviar datos via GET con parámetros en la URL (más confiable con Apps Script)
+            const params = new URLSearchParams();
+            // Enviar documento SIN puntos para que el script lo encuentre bien
+            params.append('documento', payload.documento);
+            params.append('documento_original', payload.documento); // guardar el original con puntos
+            params.append('nombre', payload.nombre);
+            params.append('rango', payload.rango);
+            params.append('rh', payload.rh);
+            params.append('status', payload.status);
+            // No enviar foto si es base64 muy largo
+            params.append('foto', (payload.foto && payload.foto.length > 5000) ? '' : (payload.foto || ''));
+
+            const urlConDatos = APPS_SCRIPT_URL + '?' + params.toString();
+            
+            await fetch(urlConDatos, {
+                method: 'GET',
+                mode: 'no-cors'
+            });
+
+            alert("✅ ¡Datos guardados en sistema y Google Sheets!");
+            btn.innerText = "☁️ GUARDADO";
+            updateLivePreview();
+            renderizarLista();
+        } catch (error) {
+            console.error("Error detallado:", error);
+            // Intentar obtener más info del error
+            let mensajeError = error.message || "Error desconocido";
+            if (error.name === "TypeError" && mensajeError.includes("fetch")) {
+                mensajeError = "No se pudo conectar con SheetDB. Verifica tu conexión a internet o que la API esté activa.";
+            }
+            alert("❌ Fallo al guardar en la nube.\n\nDetalle: " + mensajeError + "\n\nLos datos SÍ quedaron guardados localmente en este dispositivo.");
+            btn.innerText = "☁️ REINTENTAR NUBE";
+            // Aunque falle la nube, actualizamos la vista local
+            updateLivePreview();
+            renderizarLista();
+        } finally {
+            btn.disabled = false;
+            setTimeout(() => { btn.innerText = "☁️ GUARDAR EN LA NUBE (BASE DE DATOS)"; }, 3000);
+        }
+    }
+
+    // 10. UTILIDADES GENERALES
+    function nuevoPatrullero() {
+        personal.push({ 
+            nombre: "NUEVO REGISTRO ADMIN",
+            rango: "PATRULLERO", 
+            tipoDoc: "C.C.",
+            documento: "000.000", 
+            rh: "O+", 
+            foto: "", 
+            firma: "",
+            status: "activo", 
+            fase2Completada: true, 
+            carnetGuardado: true,
+            fechaIngreso: new Date().toISOString().split('T')[0],
+            archivos: { hojaVida: "", certEstudio: "", certBachiller: "" }
+        });
+        renderizarLista();
+        verDetalle(personal.length - 1);
+    }
+
+    function cambiarSeccion(id) {
+        document.querySelectorAll('.container').forEach(c => c.style.display = 'none');
+        document.getElementById(id).style.display = 'block';
+    }
+
+    function showDashboard() { 
+        renderizarLista(); 
+        aplicarConfigGlobal();
+        cambiarSeccion('dashboard-section'); 
+    }
+
+    function logout() { location.reload(); }
+
+    function eliminarPatrullero() { 
+        if(confirm("¿Estás seguro de eliminar este registro?")) { 
+            personal.splice(indexActual, 1); 
+            showDashboard(); 
+        } 
+    }
+
+    // Detectar si entraron por QR o solo están recargando la página
+    window.onload = async () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const cedulaRaw = urlParams.get('carnet');
+        const cedula = cedulaRaw ? cedulaRaw.replace(/\./g, '') : null;
+
+        if (cedula) {
+            // Modo verificación pública: ocultar TODO el sistema con !important via clase
+            document.body.style.cssText = 'background:#0f0f0f; padding:0; margin:0;';
+            // Ocultar absolutamente todo excepto la pantalla de validación
+            document.querySelectorAll('body > *').forEach(el => {
+                if(el.id !== 'pantalla-validacion') el.style.setProperty('display', 'none', 'important');
+            });
+            const pantalla = document.getElementById('pantalla-validacion');
+            if(pantalla) { pantalla.style.setProperty('display', 'block', 'important'); }
+
+            const badge = document.getElementById('val-badge');
+
+            // Primero buscamos en localStorage (datos locales del sistema)
+            const localPersonal = JSON.parse(localStorage.getItem('db_patrulleros_huila')) || [];
+            const localReg = localPersonal.find(p => p.documento.replace(/\./g, '') === cedula);
+
+            // Función para mostrar datos del carné
+            function mostrarCarnet(p) {
+                document.getElementById('val-nombre').innerText = p.nombre || '---';
+                document.getElementById('val-rango').innerText = p.rango || 'PATRULLERO';
+                document.getElementById('val-doc').innerText = (p.tipoDoc || 'C.C.') + ' ' + p.documento;
+                document.getElementById('val-rh').innerText = p.rh ? 'RH: ' + p.rh : '';
+                if(p.foto) document.getElementById('val-foto').src = p.foto;
+
+                const status = (p.status || 'activo').toLowerCase();
+                if(status === 'activo') {
+                    badge.innerHTML = '✅ PATRULLERO ACTIVO';
+                    badge.style.background = '#27ae60';
+                    badge.style.color = '#fff';
+                } else if(status === 'inactivo') {
+                    badge.innerHTML = '🚫 PATRULLERO INACTIVO';
+                    badge.style.background = '#c0392b';
+                    badge.style.color = '#fff';
+                } else {
+                    badge.innerHTML = '⏳ ASPIRANTE EN PROCESO';
+                    badge.style.background = '#e67e22';
+                    badge.style.color = '#fff';
+                }
+            }
+
+            function mostrarNoExiste() {
+                document.getElementById('val-carnet').style.display = 'none';
+                badge.style.display = 'none';
+                document.getElementById('val-no-existe').style.display = 'block';
+            }
+
+            if(localReg) {
+                mostrarCarnet(localReg);
+            } else {
+                // Si no está local, consultar Google Sheets
+                try {
+                    badge.innerHTML = '⏳ Consultando base de datos...';
+                    badge.style.background = '#333';
+                    const todos = await leerDesdeSheets();
+                    const encontrado = todos.find(r => 
+                        (r.documento || '').replace(/\./g,'') === cedula ||
+                        (r.documento || '') === cedula
+                    );
+                    if (encontrado) {
+                        mostrarCarnet(encontrado);
+                    } else {
+                        mostrarNoExiste();
+                    }
+                } catch (e) {
+                    console.error("Error de red:", e);
+                    badge.innerText = '⚠️ ERROR DE CONEXIÓN';
+                    badge.style.background = '#e67e22';
+                }
+            }
+            return; // No continuar con la inicialización del sistema
+        }
+
+        // Inicialización normal del sistema (sin parámetro ?carnet=)
+        renderizarLista();
+    }
+</script>
+</body>
+</html>
