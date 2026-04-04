@@ -887,7 +887,7 @@
         document.getElementById('view-rh').innerText = "RH: " + (rh || "O+");
 
         // URL base fija de GitHub Pages
-        const baseUrl = 'https://patrulleroscivicos.github.io/huila-carnet/';
+        const baseUrl = 'https://patrulleroscivicos.github.io/huila-carnet/index.html';
         const docLimpio = doc.replace(/\./g, '');
         const qrUrl = baseUrl + '?carnet=' + docLimpio;
         
@@ -1067,14 +1067,17 @@
                 return;
             }
 
-            const res = await fetch(APPS_SCRIPT_URL, {
+            // Usar URLSearchParams para compatibilidad con no-cors
+            const formData = new URLSearchParams();
+            Object.keys(payload).forEach(k => formData.append(k, payload[k]));
+
+            await fetch(APPS_SCRIPT_URL, {
                 method: 'POST',
                 mode: 'no-cors',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: formData
             });
 
-            // no-cors no permite leer la respuesta, pero si no lanzó error = éxito
+            // no-cors no permite leer respuesta, si no lanzó error = enviado
             alert("✅ ¡Datos guardados en sistema y Google Sheets!");
             btn.innerText = "☁️ GUARDADO";
             updateLivePreview();
