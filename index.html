@@ -520,7 +520,7 @@
     // URL para LEER datos (pública)
     const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}`;
     // URL para ESCRIBIR datos (usa Apps Script - se configura abajo)
-    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxc2D5vADpyoWx9KrWtJnixiYzHudcrJEng8maK4keycON7r-1JqR-AXob91VlhIkhGKw/exec';
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwM8MAvdYxc6MFeP63uj6MMT-QGiRROK-GFtgK8e6KZTdFS8FS_5G2np5oeiuXpzqC9gw/exec';
 
     // 1. CONTROL DE CARNÉ GIRATORIO
     document.getElementById('card-element').onclick = function() {
@@ -905,7 +905,7 @@
             qrInfo.style.cssText = 'font-size:9px; color:#888; word-break:break-all; margin-top:4px; text-align:center; max-width:200px;';
             document.getElementById('qr-container').after(qrInfo);
         }
-        qrInfo.innerText = doc ? '🔗 ' + qrUrl : '';
+        qrInfo.innerText = ''; // URL oculta
     }
     
     function validarAceptacionDatos() {
@@ -1067,17 +1067,24 @@
                 return;
             }
 
-            // Usar URLSearchParams para compatibilidad con no-cors
-            const formData = new URLSearchParams();
-            Object.keys(payload).forEach(k => formData.append(k, payload[k]));
-
-            await fetch(APPS_SCRIPT_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                body: formData
+            // Enviar datos via GET con parámetros en la URL (más confiable con Apps Script)
+            const params = new URLSearchParams();
+            Object.keys(payload).forEach(k => {
+                // No enviar foto si es muy grande (base64)
+                if(k === 'foto' && payload[k] && payload[k].length > 5000) {
+                    params.append(k, ''); 
+                } else {
+                    params.append(k, payload[k]);
+                }
             });
 
-            // no-cors no permite leer respuesta, si no lanzó error = enviado
+            const urlConDatos = APPS_SCRIPT_URL + '?' + params.toString();
+            
+            await fetch(urlConDatos, {
+                method: 'GET',
+                mode: 'no-cors'
+            });
+
             alert("✅ ¡Datos guardados en sistema y Google Sheets!");
             btn.innerText = "☁️ GUARDADO";
             updateLivePreview();
