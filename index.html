@@ -17,6 +17,7 @@
             });
         }
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
@@ -138,23 +139,25 @@
         .signature-section { 
             width: 100%; 
             position: relative;
+            text-align: center;
         }
 
         .signature-wrapper {
             position: relative;
-            height: 10px; 
+            height: 70px; 
             width: 100%;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            overflow: hidden;
         }
 
         .signature-img { 
-            position: absolute;
-            bottom: -5px; 
-            left: 50%;
-            transform: translateX(-50%); 
-            max-width: 190px; 
-            max-height: 100px; 
+            max-width: 180px; 
+            max-height: 65px; 
             object-fit: contain; 
-            z-index: 3;
+            display: block;
+            margin: 0 auto;
         }
 
         .sig-line { border-top: 1.5px solid #000; width: 85%; margin: 0 auto 5px; }
@@ -506,7 +509,7 @@
                                 
                                 <div class="signature-section">
                                     <div class="signature-wrapper">
-                                        <img id="preview-signature" class="fondologo.png" src="">
+                                        <img id="preview-signature" class="signature-img" src="">
                                     </div>
                                     <div class="sig-line"></div>
                                     <strong>Firma Autorizada</strong>
@@ -530,6 +533,11 @@
     
    <script>
     // Este es el nuevo motor de tu base de datos en Google Sheets
+    // Inicializar EmailJS
+    emailjs.init('XnRzwF79o38MeeapN');
+    const EMAILJS_SERVICE = 'service_f3xit9b';
+    const EMAILJS_TEMPLATE = 'template_8sayket';
+
     // Google Sheets como base de datos
     const SHEET_ID = '1nzJ1-VeRLWIBkBG01Qoz84O-jUFYKmDVGOZz91YZksc';
     const SHEET_NAME = 'Hoja 1';
@@ -795,26 +803,70 @@
         }
     }
 
-    function recuperarClave() {
-        const email = document.getElementById('rec-email').value;
+    let codigoRecuperacion = null;
+    let codigoExpira = null;
+
+    async function recuperarClave() {
+        const email = document.getElementById('rec-email').value.trim();
         if(!email) { alert("Ingrese un correo."); return; }
+
         const user = usuariosApp.find(u => u.email === email);
-        if(user) {
-            const codigo = Math.floor(1000 + Math.random() * 9000);
-            const resp = prompt(`Se ha enviado un código a su correo (SIMULACIÓN: el código es ${codigo}). Ingréselo aquí:`);
-            if(resp == codigo) {
-                const nuevaClave = prompt("Ingrese su nueva contraseña:");
-                if(nuevaClave) {
+        if(!user) {
+            alert("Correo no encontrado en la base de datos.");
+            return;
+        }
+
+        const btn = document.querySelector("button[onclick='recuperarClave()']");
+        btn.innerText = "⏳ ENVIANDO...";
+        btn.disabled = true;
+
+        try {
+            // Generar código aleatorio de 4 dígitos
+            codigoRecuperacion = Math.floor(1000 + Math.random() * 9000).toString();
+            codigoExpira = Date.now() + (10 * 60 * 1000); // 10 minutos
+
+            // Enviar correo con EmailJS
+            await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
+                correo: email,
+                codigo: codigoRecuperacion
+            });
+
+            alert("✅ Código enviado a " + email + "\n\nRevisa tu bandeja de entrada.");
+
+            // Pedir el código al usuario
+            const codigoIngresado = prompt("Ingresa el código de 4 dígitos que llegó a tu correo:");
+
+            if(!codigoIngresado) { btn.innerText = "ENVIAR CÓDIGO"; btn.disabled = false; return; }
+
+            if(Date.now() > codigoExpira) {
+                alert("⛔ El código ha expirado. Solicita uno nuevo.");
+                codigoRecuperacion = null;
+                btn.innerText = "ENVIAR CÓDIGO";
+                btn.disabled = false;
+                return;
+            }
+
+            if(codigoIngresado.trim() === codigoRecuperacion) {
+                const nuevaClave = prompt("✅ Código correcto.\n\nIngresa tu nueva contraseña:");
+                if(nuevaClave && nuevaClave.length >= 6) {
                     user.pass = hashSimple(nuevaClave);
                     localStorage.setItem('db_usuarios_huila', JSON.stringify(usuariosApp));
-                    alert("Contraseña actualizada con éxito.");
+                    codigoRecuperacion = null;
+                    alert("✅ Contraseña actualizada correctamente.");
                     cambiarSeccion('login-section');
+                } else {
+                    alert("La contraseña debe tener al menos 6 caracteres.");
                 }
             } else {
-                alert("Código incorrecto.");
+                alert("❌ Código incorrecto. Intenta de nuevo.");
+                codigoRecuperacion = null;
             }
-        } else {
-            alert("Correo no encontrado en la base de datos.");
+        } catch(e) {
+            console.error("Error EmailJS:", e);
+            alert("❌ No se pudo enviar el correo. Verifica tu conexión a internet.");
+        } finally {
+            btn.innerText = "ENVIAR CÓDIGO";
+            btn.disabled = false;
         }
     }
 
