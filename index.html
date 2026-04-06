@@ -277,15 +277,85 @@
     </div>
 
     <div id="recovery-section" class="container login-layout">
-        <div class="login-card">
-            <h2 class="gold">Recuperar Acceso</h2>
-            <p style="font-size: 12px; color: #888; margin-bottom: 20px;">Ingrese su correo registrado para recibir las instrucciones.</p>
-            <div class="form-group">
-                <label>Correo Electrónico</label>
-                <input type="email" id="rec-email" placeholder="correo@ejemplo.com">
+        <div class="login-card" style="width:400px; max-width:95vw;">
+
+            <!-- PASO 1: Ingresar correo -->
+            <div id="rec-paso1">
+                <div style="text-align:center; margin-bottom:20px;">
+                    <div style="width:56px; height:56px; background:rgba(212,175,55,0.15); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 12px;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d4af37" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                    </div>
+                    <h2 style="color:var(--gold); margin:0 0 6px; font-size:20px;">Recuperar Acceso</h2>
+                    <p style="font-size:13px; color:#888; margin:0;">Ingresa el correo con el que te registraste.</p>
+                </div>
+                <div class="form-group">
+                    <label>Correo Electrónico</label>
+                    <input type="email" id="rec-email" placeholder="correo@ejemplo.com">
+                </div>
+                <!-- Mensaje de estado -->
+                <div id="rec-mensaje" style="display:none; padding:12px 16px; border-radius:8px; font-size:13px; margin-bottom:15px; text-align:center;"></div>
+                <button class="btn btn-primary" id="btn-enviar-codigo" onclick="recuperarClave()" style="margin-top:5px;">ENVIAR CÓDIGO</button>
+                <p style="margin-top:15px; font-size:13px; text-align:center;"><a href="#" onclick="cambiarSeccion('login-section')" style="color:var(--gold);">Volver al inicio</a></p>
             </div>
-            <button class="btn btn-primary" onclick="recuperarClave()">ENVIAR CÓDIGO</button>
-            <p style="margin-top: 15px; font-size: 13px;"><a href="#" onclick="cambiarSeccion('login-section')" style="color: var(--gold);">Volver al inicio</a></p>
+
+            <!-- PASO 2: Ingresar código -->
+            <div id="rec-paso2" style="display:none;">
+                <div style="text-align:center; margin-bottom:20px;">
+                    <div style="width:56px; height:56px; background:rgba(46,204,113,0.15); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 12px;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2ecc71" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.15 12 19.79 19.79 0 0 1 1.07 3.4 2 2 0 0 1 3 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16z"/></svg>
+                    </div>
+                    <h2 style="color:#2ecc71; margin:0 0 6px; font-size:20px;">Código Enviado</h2>
+                    <p style="font-size:13px; color:#888; margin:0;">Revisa tu bandeja de entrada y escribe el código de 4 dígitos.</p>
+                    <p id="rec-email-destino" style="font-size:13px; color:var(--gold); margin:6px 0 0; font-weight:bold;"></p>
+                </div>
+
+                <!-- Cajas del código -->
+                <div style="display:flex; gap:10px; justify-content:center; margin:20px 0;">
+                    <input type="text" id="cod1" maxlength="1" oninput="moverCodigo(this,'cod2')" onkeydown="borrarCodigo(event,this,'')" style="width:56px; height:64px; text-align:center; font-size:28px; font-weight:bold; background:#2a2a2a; color:#d4af37; border:2px solid #444; border-radius:10px; box-sizing:border-box;">
+                    <input type="text" id="cod2" maxlength="1" oninput="moverCodigo(this,'cod3')" onkeydown="borrarCodigo(event,this,'cod1')" style="width:56px; height:64px; text-align:center; font-size:28px; font-weight:bold; background:#2a2a2a; color:#d4af37; border:2px solid #444; border-radius:10px; box-sizing:border-box;">
+                    <input type="text" id="cod3" maxlength="1" oninput="moverCodigo(this,'cod4')" onkeydown="borrarCodigo(event,this,'cod2')" style="width:56px; height:64px; text-align:center; font-size:28px; font-weight:bold; background:#2a2a2a; color:#d4af37; border:2px solid #444; border-radius:10px; box-sizing:border-box;">
+                    <input type="text" id="cod4" maxlength="1" oninput="moverCodigo(this,'')" onkeydown="borrarCodigo(event,this,'cod3')" style="width:56px; height:64px; text-align:center; font-size:28px; font-weight:bold; background:#2a2a2a; color:#d4af37; border:2px solid #444; border-radius:10px; box-sizing:border-box;">
+                </div>
+
+                <div id="rec-timer" style="text-align:center; font-size:13px; color:#888; margin-bottom:15px;">
+                    Expira en: <span id="rec-countdown" style="color:var(--gold); font-weight:bold;">10:00</span>
+                </div>
+
+                <div id="rec-error-codigo" style="display:none; background:rgba(192,57,43,0.15); border:1px solid #c0392b; color:#e74c3c; padding:10px 14px; border-radius:8px; font-size:13px; text-align:center; margin-bottom:12px;"></div>
+
+                <button class="btn btn-primary" onclick="verificarCodigo()">VERIFICAR CÓDIGO</button>
+                <p style="margin-top:12px; font-size:13px; text-align:center;">
+                    <a href="#" onclick="mostrarPaso1()" style="color:#888;">Volver · Reenviar código</a>
+                </p>
+            </div>
+
+            <!-- PASO 3: Nueva contraseña -->
+            <div id="rec-paso3" style="display:none;">
+                <div style="text-align:center; margin-bottom:20px;">
+                    <div style="width:56px; height:56px; background:rgba(212,175,55,0.15); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 12px;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d4af37" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    </div>
+                    <h2 style="color:var(--gold); margin:0 0 6px; font-size:20px;">Nueva Contraseña</h2>
+                    <p style="font-size:13px; color:#888; margin:0;">Crea una contraseña segura de al menos 6 caracteres.</p>
+                </div>
+                <div class="form-group">
+                    <label>Nueva Contraseña</label>
+                    <div style="position:relative;">
+                        <input type="password" id="rec-nueva-pass" placeholder="••••••••" style="padding-right:40px;">
+                        <button type="button" onclick="toggleRecPass('rec-nueva-pass','ojo1')" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#d4af37;font-size:16px;" id="ojo1">👁️</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Confirmar Contraseña</label>
+                    <div style="position:relative;">
+                        <input type="password" id="rec-confirmar-pass" placeholder="••••••••" style="padding-right:40px;">
+                        <button type="button" onclick="toggleRecPass('rec-confirmar-pass','ojo2')" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#d4af37;font-size:16px;" id="ojo2">👁️</button>
+                    </div>
+                </div>
+                <div id="rec-error-pass" style="display:none; background:rgba(192,57,43,0.15); border:1px solid #c0392b; color:#e74c3c; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:12px;"></div>
+                <button class="btn btn-primary" onclick="cambiarPassword()">ACTUALIZAR CONTRASEÑA</button>
+            </div>
+
         </div>
     </div>
 
@@ -806,68 +876,200 @@
     let codigoRecuperacion = null;
     let codigoExpira = null;
 
+    let recTimerInterval = null;
+    let recUserActual = null;
+
+    function mostrarMensajeRec(texto, tipo) {
+        const el = document.getElementById('rec-mensaje');
+        el.style.display = 'block';
+        if(tipo === 'error') {
+            el.style.background = 'rgba(192,57,43,0.15)';
+            el.style.border = '1px solid #c0392b';
+            el.style.color = '#e74c3c';
+        } else if(tipo === 'exito') {
+            el.style.background = 'rgba(46,204,113,0.15)';
+            el.style.border = '1px solid #27ae60';
+            el.style.color = '#2ecc71';
+        } else {
+            el.style.background = 'rgba(212,175,55,0.1)';
+            el.style.border = '1px solid #d4af37';
+            el.style.color = '#d4af37';
+        }
+        el.innerText = texto;
+    }
+
+    function mostrarPaso1() {
+        if(recTimerInterval) clearInterval(recTimerInterval);
+        document.getElementById('rec-paso1').style.display = 'block';
+        document.getElementById('rec-paso2').style.display = 'none';
+        document.getElementById('rec-paso3').style.display = 'none';
+        document.getElementById('rec-mensaje').style.display = 'none';
+        document.getElementById('rec-email').value = '';
+        codigoRecuperacion = null;
+        recUserActual = null;
+    }
+
+    function iniciarTimer() {
+        if(recTimerInterval) clearInterval(recTimerInterval);
+        let segundos = 10 * 60;
+        const el = document.getElementById('rec-countdown');
+        recTimerInterval = setInterval(() => {
+            segundos--;
+            const m = Math.floor(segundos / 60);
+            const s = segundos % 60;
+            if(el) el.innerText = m + ':' + (s < 10 ? '0' : '') + s;
+            if(segundos <= 0) {
+                clearInterval(recTimerInterval);
+                if(el) el.innerText = 'Expirado';
+                codigoRecuperacion = null;
+            }
+        }, 1000);
+    }
+
+    function moverCodigo(input, nextId) {
+        if(input.value.length === 1 && nextId) {
+            document.getElementById(nextId).focus();
+        }
+        // Auto verificar cuando se completan los 4 dígitos
+        const c1 = document.getElementById('cod1').value;
+        const c2 = document.getElementById('cod2').value;
+        const c3 = document.getElementById('cod3').value;
+        const c4 = document.getElementById('cod4').value;
+        if(c1 && c2 && c3 && c4) verificarCodigo();
+    }
+
+    function borrarCodigo(event, input, prevId) {
+        if(event.key === 'Backspace' && input.value === '' && prevId) {
+            document.getElementById(prevId).focus();
+        }
+    }
+
+    function toggleRecPass(inputId, btnId) {
+        const input = document.getElementById(inputId);
+        const btn = document.getElementById(btnId);
+        if(input.type === 'password') { input.type = 'text'; btn.innerText = '🙈'; }
+        else { input.type = 'password'; btn.innerText = '👁️'; }
+    }
+
     async function recuperarClave() {
         const email = document.getElementById('rec-email').value.trim();
-        if(!email) { alert("Ingrese un correo."); return; }
+        if(!email) { mostrarMensajeRec('Ingresa tu correo electrónico.', 'error'); return; }
 
         const user = usuariosApp.find(u => u.email === email);
         if(!user) {
-            alert("Correo no encontrado en la base de datos.");
+            mostrarMensajeRec('Este correo no está registrado en el sistema.', 'error');
             return;
         }
 
-        const btn = document.querySelector("button[onclick='recuperarClave()']");
-        btn.innerText = "⏳ ENVIANDO...";
+        const btn = document.getElementById('btn-enviar-codigo');
+        btn.innerText = '⏳ ENVIANDO...';
         btn.disabled = true;
+        mostrarMensajeRec('Enviando código a tu correo...', 'info');
 
         try {
-            // Generar código aleatorio de 4 dígitos
             codigoRecuperacion = Math.floor(1000 + Math.random() * 9000).toString();
-            codigoExpira = Date.now() + (10 * 60 * 1000); // 10 minutos
+            codigoExpira = Date.now() + (10 * 60 * 1000);
+            recUserActual = user;
 
-            // Enviar correo con EmailJS
             await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
                 correo: email,
                 codigo: codigoRecuperacion
             });
 
-            alert("✅ Código enviado a " + email + "\n\nRevisa tu bandeja de entrada.");
+            // Mostrar paso 2
+            document.getElementById('rec-paso1').style.display = 'none';
+            document.getElementById('rec-paso2').style.display = 'block';
+            document.getElementById('rec-email-destino').innerText = email;
+            document.getElementById('cod1').value = '';
+            document.getElementById('cod2').value = '';
+            document.getElementById('cod3').value = '';
+            document.getElementById('cod4').value = '';
+            document.getElementById('rec-error-codigo').style.display = 'none';
+            document.getElementById('cod1').focus();
+            iniciarTimer();
 
-            // Pedir el código al usuario
-            const codigoIngresado = prompt("Ingresa el código de 4 dígitos que llegó a tu correo:");
-
-            if(!codigoIngresado) { btn.innerText = "ENVIAR CÓDIGO"; btn.disabled = false; return; }
-
-            if(Date.now() > codigoExpira) {
-                alert("⛔ El código ha expirado. Solicita uno nuevo.");
-                codigoRecuperacion = null;
-                btn.innerText = "ENVIAR CÓDIGO";
-                btn.disabled = false;
-                return;
-            }
-
-            if(codigoIngresado.trim() === codigoRecuperacion) {
-                const nuevaClave = prompt("✅ Código correcto.\n\nIngresa tu nueva contraseña:");
-                if(nuevaClave && nuevaClave.length >= 6) {
-                    user.pass = hashSimple(nuevaClave);
-                    localStorage.setItem('db_usuarios_huila', JSON.stringify(usuariosApp));
-                    codigoRecuperacion = null;
-                    alert("✅ Contraseña actualizada correctamente.");
-                    cambiarSeccion('login-section');
-                } else {
-                    alert("La contraseña debe tener al menos 6 caracteres.");
-                }
-            } else {
-                alert("❌ Código incorrecto. Intenta de nuevo.");
-                codigoRecuperacion = null;
-            }
         } catch(e) {
             console.error("Error EmailJS:", e);
-            alert("❌ No se pudo enviar el correo. Verifica tu conexión a internet.");
+            mostrarMensajeRec('No se pudo enviar el correo. Verifica tu conexión.', 'error');
         } finally {
-            btn.innerText = "ENVIAR CÓDIGO";
+            btn.innerText = 'ENVIAR CÓDIGO';
             btn.disabled = false;
         }
+    }
+
+    function verificarCodigo() {
+        const c1 = document.getElementById('cod1').value;
+        const c2 = document.getElementById('cod2').value;
+        const c3 = document.getElementById('cod3').value;
+        const c4 = document.getElementById('cod4').value;
+        const codigoIngresado = c1 + c2 + c3 + c4;
+        const errEl = document.getElementById('rec-error-codigo');
+
+        if(codigoIngresado.length < 4) {
+            errEl.style.display = 'block';
+            errEl.innerText = 'Ingresa los 4 dígitos del código.';
+            return;
+        }
+
+        if(Date.now() > codigoExpira) {
+            errEl.style.display = 'block';
+            errEl.innerText = '⛔ El código ha expirado. Solicita uno nuevo.';
+            codigoRecuperacion = null;
+            return;
+        }
+
+        if(codigoIngresado === codigoRecuperacion) {
+            if(recTimerInterval) clearInterval(recTimerInterval);
+            document.getElementById('rec-paso2').style.display = 'none';
+            document.getElementById('rec-paso3').style.display = 'block';
+            document.getElementById('rec-nueva-pass').value = '';
+            document.getElementById('rec-confirmar-pass').value = '';
+            document.getElementById('rec-error-pass').style.display = 'none';
+        } else {
+            errEl.style.display = 'block';
+            errEl.innerText = '❌ Código incorrecto. Revisa tu correo e intenta de nuevo.';
+            document.getElementById('cod1').value = '';
+            document.getElementById('cod2').value = '';
+            document.getElementById('cod3').value = '';
+            document.getElementById('cod4').value = '';
+            document.getElementById('cod1').focus();
+        }
+    }
+
+    function cambiarPassword() {
+        const nueva = document.getElementById('rec-nueva-pass').value;
+        const confirmar = document.getElementById('rec-confirmar-pass').value;
+        const errEl = document.getElementById('rec-error-pass');
+
+        if(nueva.length < 6) {
+            errEl.style.display = 'block';
+            errEl.innerText = 'La contraseña debe tener al menos 6 caracteres.';
+            return;
+        }
+
+        if(nueva !== confirmar) {
+            errEl.style.display = 'block';
+            errEl.innerText = 'Las contraseñas no coinciden.';
+            return;
+        }
+
+        recUserActual.pass = hashSimple(nueva);
+        localStorage.setItem('db_usuarios_huila', JSON.stringify(usuariosApp));
+        codigoRecuperacion = null;
+        recUserActual = null;
+
+        // Mostrar éxito y volver al login
+        document.getElementById('rec-paso3').style.display = 'none';
+        document.getElementById('rec-paso1').style.display = 'block';
+        document.getElementById('rec-mensaje').style.display = 'block';
+        document.getElementById('rec-mensaje').style.background = 'rgba(46,204,113,0.15)';
+        document.getElementById('rec-mensaje').style.border = '1px solid #27ae60';
+        document.getElementById('rec-mensaje').style.color = '#2ecc71';
+        document.getElementById('rec-mensaje').innerText = '✅ Contraseña actualizada correctamente.';
+
+        setTimeout(() => {
+            cambiarSeccion('login-section');
+        }, 2500);
     }
 
     // 6. RENDERIZADO DEL DASHBOARD
