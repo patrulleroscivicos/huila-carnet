@@ -1190,7 +1190,10 @@
             document.getElementById('fase3-box').open = false;
         }
 
-        // Archivos PDF Fase 1
+        // Limpiar inputs de archivo al cambiar de perfil para evitar contaminación entre perfiles
+        document.querySelectorAll('#fase1-box input[type="file"]').forEach(inp => inp.value = '');
+
+        // Archivos PDF Fase 1 - mostrar solo los del perfil actual
         mostrarEnlacePDF('hojaVida', p.archivos.hojaVida, "Hoja de Vida");
         mostrarEnlacePDF('certEstudio', p.archivos.certEstudio, "Cert. Estudio");
         mostrarEnlacePDF('certBachiller', p.archivos.certBachiller, "Cert. Bachiller");
@@ -1283,13 +1286,24 @@
 
     function cargarPDF(input, tipo) {
         if (input.files && input.files[0]) {
+            const archivo = input.files[0];
+            // Verificar tamaño máximo 5MB para evitar bloqueos
+            if(archivo.size > 5 * 1024 * 1024) {
+                alert("El archivo es muy grande. El tamaño máximo es 5MB.");
+                input.value = '';
+                return;
+            }
             const reader = new FileReader();
             reader.onload = (e) => {
-                personal[indexActual].archivos[tipo] = e.target.result;
-                localStorage.setItem('db_patrulleros_huila', JSON.stringify(personal));
+                const indice = indexActual; // Capturar índice actual
+                personal[indice].archivos[tipo] = e.target.result;
                 mostrarEnlacePDF(tipo, e.target.result, "Documento subido");
+                // Guardar en localStorage de forma asíncrona para no bloquear el UI
+                setTimeout(() => {
+                    localStorage.setItem('db_patrulleros_huila', JSON.stringify(personal));
+                }, 0);
             };
-            reader.readAsDataURL(input.files[0]);
+            reader.readAsDataURL(archivo);
         }
     }
 
