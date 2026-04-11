@@ -144,23 +144,22 @@
 
         .signature-wrapper {
             position: relative;
-            height: 70px; 
+            height: 60px; 
             width: 100%;
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-            overflow: hidden;
         }
 
         .signature-img { 
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
             max-width: 180px; 
-            max-height: 65px; 
+            max-height: 70px; 
             object-fit: contain; 
-            display: block;
-            margin: 0 auto;
+            z-index: 3;
         }
 
-        .sig-line { border-top: 1.5px solid #000; width: 85%; margin: 0 auto 5px; }
+        .sig-line { border-top: 1.5px solid #000; width: 85%; margin: 0 auto 5px; position: relative; z-index: 2; }
         .signature-section strong { font-size: 13px; display: block; }
         .signature-section p { font-size: 12px; margin: 1px 0; font-weight: bold; }
 
@@ -869,7 +868,9 @@
         const nuevoTel = document.getElementById('global-pres-tel').value;
 
         if(nuevoNom && nuevoCC && nuevoTel) {
-            configGlobal = { nombre: nuevoNom, cc: nuevoCC, tel: nuevoTel };
+            configGlobal.nombre = nuevoNom;
+            configGlobal.cc = nuevoCC;
+            configGlobal.tel = nuevoTel;
             localStorage.setItem('config_global_huila', JSON.stringify(configGlobal));
             aplicarConfigGlobal();
             alert("Configuración de autoridad actualizada correctamente.");
@@ -893,10 +894,10 @@
         const firma = configGlobal.firmaGlobal || '';
         const previewSig = document.getElementById('preview-signature');
         const previewFirmaGlobal = document.getElementById('preview-firma-global');
-        if(previewSig && firma) previewSig.src = firma;
-        if(previewFirmaGlobal && firma) {
+        if(previewSig) previewSig.src = firma;
+        if(previewFirmaGlobal) {
             previewFirmaGlobal.src = firma;
-            previewFirmaGlobal.style.display = 'block';
+            previewFirmaGlobal.style.display = firma ? 'block' : 'none';
         }
     }
 
