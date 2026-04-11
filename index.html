@@ -1249,7 +1249,8 @@
         document.getElementById('edit-doc-num').value = p.documento;
         document.getElementById('edit-rh').value = p.rh;
         document.getElementById('preview-photo').src = p.foto || "data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22150%22 height=%22185%22%3E%3Crect width=%22150%22 height=%22185%22 fill=%22%23ccc%22/%3E%3C/svg%3E";
-        document.getElementById('preview-signature').src = p.firma || "";
+        // Usar firma global si existe, si no la individual del perfil
+        document.getElementById('preview-signature').src = configGlobal.firmaGlobal || p.firma || "";
         document.getElementById('fecha-ingreso').value = p.fechaIngreso || "";
 
         // Lógica de Fases Visuales
