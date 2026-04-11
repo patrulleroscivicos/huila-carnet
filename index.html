@@ -1642,7 +1642,55 @@ Podrás subir uno nuevo después.`)) {
         document.getElementById(id).style.display = 'block';
     }
 
-    function showDashboard() { 
+    async function showDashboard() {
+        // Si es admin, sincronizar perfiles desde Google Sheets
+        // para que funcione desde cualquier dispositivo
+        if(esAdmin) {
+            try {
+                const datosNube = await leerDesdeSheets();
+                if(datosNube && datosNube.length > 0) {
+                    // Fusionar datos de la nube con localStorage
+                    // La nube tiene prioridad para datos básicos (nombre, rango, status, foto)
+                    // El localStorage conserva datos extras (archivos PDF, firma, etc.)
+                    datosNube.forEach(pNube => {
+                        const docNube = (pNube.documento || '').replace(/\./g, '').trim();
+                        const localIndex = personal.findIndex(p => 
+                            (p.documento || '').replace(/\./g, '').trim() === docNube
+                        );
+                        if(localIndex >= 0) {
+                            // Actualizar datos básicos desde la nube
+                            personal[localIndex].nombre = pNube.nombre || personal[localIndex].nombre;
+                            personal[localIndex].rango = pNube.rango || personal[localIndex].rango;
+                            personal[localIndex].rh = pNube.rh || personal[localIndex].rh;
+                            personal[localIndex].status = pNube.status || personal[localIndex].status;
+                            if(pNube.foto && pNube.foto.startsWith('http')) {
+                                personal[localIndex].foto = pNube.foto;
+                            }
+                        } else {
+                            // Perfil nuevo en la nube que no existe local - agregarlo
+                            personal.push({
+                                nombre: pNube.nombre || 'Sin nombre',
+                                rango: pNube.rango || 'PATRULLERO',
+                                tipoDoc: pNube.tipoDoc || 'C.C.',
+                                documento: pNube.documento || '',
+                                rh: pNube.rh || 'O+',
+                                foto: pNube.foto || '',
+                                firma: '',
+                                status: pNube.status || 'activo',
+                                fase2Completada: true,
+                                carnetGuardado: true,
+                                fechaIngreso: pNube.fechaIngreso || '',
+                                fechaInactivo: '',
+                                archivos: { hojaVida: '', certEstudio: '', certBachiller: '' }
+                            });
+                        }
+                    });
+                    localStorage.setItem('db_patrulleros_huila', JSON.stringify(personal));
+                }
+            } catch(e) {
+                console.error('Error sincronizando desde Sheets:', e);
+            }
+        }
         renderizarLista(); 
         aplicarConfigGlobal();
         cambiarSeccion('dashboard-section'); 
