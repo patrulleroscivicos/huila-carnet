@@ -422,6 +422,20 @@
                 </div>
                 <button class="btn btn-primary" onclick="guardarConfigGlobal()" style="height: 40px; margin-top: 25px;">ACTUALIZAR DATOS</button>
             </div>
+            <hr style="border-color: #333; margin: 20px 0;">
+            <div>
+                <label style="color: var(--gold); font-size: 13px; font-weight: bold; display: block; margin-bottom: 8px;">Firma Autorizada (Aparece en TODOS los carnés)</label>
+                <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                    <div style="width: 180px; height: 80px; border: 1px dashed #555; border-radius: 8px; overflow: hidden; background: #fff; display: flex; align-items: center; justify-content: center;">
+                        <img id="preview-firma-global" src="" style="max-width: 100%; max-height: 100%; object-fit: contain;" onerror="this.style.display='none'">
+                    </div>
+                    <div>
+                        <input type="file" id="input-firma-global" accept="image/*" onchange="subirFirmaGlobal(this)" style="margin-bottom: 8px;">
+                        <div id="firma-global-status" style="font-size: 12px; color: #d4af37;"></div>
+                        <button class="btn-danger" onclick="quitarFirmaGlobal()" style="margin-top: 5px; padding: 5px 10px; font-size: 11px; border-radius: 4px;">Quitar Firma</button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- BARRA DE BÚSQUEDA -->
@@ -524,10 +538,9 @@
                             <div id="foto-upload-status" style="font-size:12px; color:#d4af37; margin-top:4px;"></div>
                         </div>
                         
-                        <div class="form-group admin-only">
-                            <label>Imagen de la Firma (Solo Admin)</label>
-                            <input type="file" id="input-firma" accept="image/*" onchange="cargarImagen(this, 'firma')">
-                            <button class="btn-danger" onclick="quitarImagen('firma')" style="margin-top: 5px; padding: 5px; font-size: 10px; display: inline-block;">Quitar Firma</button>
+                        <div class="form-group admin-only" style="background:rgba(212,175,55,0.05); padding:10px; border-radius:8px; border:1px solid #333;">
+                            <label style="margin-top:0;">Firma Autorizada</label>
+                            <p style="font-size:11px; color:#888; margin:4px 0 0;">La firma se configura globalmente en el panel administrativo y aparece en todos los carnés automáticamente.</p>
                         </div>
 
                         <div class="form-group user-only" style="background: rgba(212, 175, 55, 0.1); padding: 15px; border-radius: 8px; border: 1px solid var(--gold); margin-top: 20px;">
@@ -684,7 +697,8 @@
     let configGlobal = JSON.parse(localStorage.getItem('config_global_huila')) || {
         nombre: "Nombre del Presidente",
         cc: "C.C. 12.123.651 Neiva",
-        tel: "315-7830273"
+        tel: "315-7830273",
+        firmaGlobal: ""
     };
 
     // 3. FUNCIONES DE LOGIN Y ROLES
@@ -800,6 +814,55 @@
         }
     }
 
+    async function subirFirmaGlobal(input) {
+        if(!input.files || !input.files[0]) return;
+        const file = input.files[0];
+        const statusDiv = document.getElementById('firma-global-status');
+        statusDiv.innerText = '⏳ Subiendo firma...';
+
+        // Preview inmediato
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            document.getElementById('preview-firma-global').src = e.target.result;
+            document.getElementById('preview-firma-global').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('upload_preset', CLOUDINARY_PRESET);
+            formData.append('public_id', 'firmas/firma_global');
+
+            const res = await fetch(CLOUDINARY_URL, { method: 'POST', body: formData });
+            const data = await res.json();
+
+            if(data.secure_url) {
+                configGlobal.firmaGlobal = data.secure_url;
+                localStorage.setItem('config_global_huila', JSON.stringify(configGlobal));
+                aplicarConfigGlobal();
+                statusDiv.innerText = '✅ Firma guardada correctamente';
+                setTimeout(() => { statusDiv.innerText = ''; }, 3000);
+            } else {
+                throw new Error('Error al subir');
+            }
+        } catch(e) {
+            statusDiv.innerText = '❌ Error al subir la firma';
+            console.error(e);
+        }
+    }
+
+    function quitarFirmaGlobal() {
+        if(confirm('¿Seguro que deseas quitar la firma global?')) {
+            configGlobal.firmaGlobal = '';
+            localStorage.setItem('config_global_huila', JSON.stringify(configGlobal));
+            document.getElementById('preview-firma-global').src = '';
+            document.getElementById('preview-firma-global').style.display = 'none';
+            document.getElementById('input-firma-global').value = '';
+            aplicarConfigGlobal();
+        }
+    }
+
     function guardarConfigGlobal() {
         const nuevoNom = document.getElementById('global-pres-nombre').value;
         const nuevoCC = document.getElementById('global-pres-cc').value;
@@ -825,6 +888,16 @@
         const viewTel = document.getElementById('view-pres-tel');
         if(viewCC) viewCC.innerText = configGlobal.cc;
         if(viewTel) viewTel.innerText = configGlobal.tel;
+
+        // Aplicar firma global a todos los carnés
+        const firma = configGlobal.firmaGlobal || '';
+        const previewSig = document.getElementById('preview-signature');
+        const previewFirmaGlobal = document.getElementById('preview-firma-global');
+        if(previewSig && firma) previewSig.src = firma;
+        if(previewFirmaGlobal && firma) {
+            previewFirmaGlobal.src = firma;
+            previewFirmaGlobal.style.display = 'block';
+        }
     }
 
     // 5. REGISTRO DE USUARIOS
@@ -1221,14 +1294,37 @@
         const file = input.files[0];
 
         if (tipo === 'firma') {
-            // La firma se guarda en base64 local (solo admin la ve, no va a la nube)
+            // Preview inmediato
             const reader = new FileReader();
             reader.onload = (e) => {
                 document.getElementById('preview-signature').src = e.target.result;
-                personal[indexActual].firma = e.target.result;
-                localStorage.setItem('db_patrulleros_huila', JSON.stringify(personal));
             };
             reader.readAsDataURL(file);
+
+            // Subir firma a Cloudinary para que se vea en todos los dispositivos
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('upload_preset', CLOUDINARY_PRESET);
+                const docId = document.getElementById('edit-doc-num').value.replace(/\./g, '') || 'sin_doc';
+                formData.append('public_id', `firmas/${docId}`);
+
+                const res = await fetch(CLOUDINARY_URL, { method: 'POST', body: formData });
+                const data = await res.json();
+
+                if(data.secure_url) {
+                    personal[indexActual].firma = data.secure_url;
+                    document.getElementById('preview-signature').src = data.secure_url;
+                } else {
+                    throw new Error('Error subiendo firma');
+                }
+            } catch(e) {
+                // Si falla, guardar base64 como respaldo
+                const reader2 = new FileReader();
+                reader2.onload = (ev) => { personal[indexActual].firma = ev.target.result; };
+                reader2.readAsDataURL(file);
+            }
+            localStorage.setItem('db_patrulleros_huila', JSON.stringify(personal));
             return;
         }
 
@@ -1562,7 +1658,8 @@ Podrás subir uno nuevo después.`)) {
                 rango: p.rango || "PATRULLERO",
                 rh: p.rh,
                 status: p.status || "activo",
-                foto: p.foto || ""
+                foto: p.foto || "",
+                firma: (p.firma && p.firma.startsWith('http')) ? p.firma : ""
             };
 
             if (!APPS_SCRIPT_URL) {
@@ -1666,6 +1763,9 @@ Podrás subir uno nuevo después.`)) {
                             if(pNube.foto && pNube.foto.startsWith('http')) {
                                 personal[localIndex].foto = pNube.foto;
                             }
+                            if(pNube.firma && pNube.firma.startsWith('http')) {
+                                personal[localIndex].firma = pNube.firma;
+                            }
                         } else {
                             // Perfil nuevo en la nube que no existe local - agregarlo
                             personal.push({
@@ -1675,7 +1775,7 @@ Podrás subir uno nuevo después.`)) {
                                 documento: pNube.documento || '',
                                 rh: pNube.rh || 'O+',
                                 foto: pNube.foto || '',
-                                firma: '',
+                                firma: pNube.firma || '',
                                 status: pNube.status || 'activo',
                                 fase2Completada: true,
                                 carnetGuardado: true,
