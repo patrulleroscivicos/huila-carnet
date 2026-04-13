@@ -828,6 +828,7 @@
         reader.readAsDataURL(file);
 
         try {
+            // 1. Subir imagen a Cloudinary
             const formData = new FormData();
             formData.append('file', file);
             formData.append('upload_preset', CLOUDINARY_PRESET);
@@ -840,7 +841,16 @@
                 configGlobal.firmaGlobal = data.secure_url;
                 localStorage.setItem('config_global_huila', JSON.stringify(configGlobal));
                 aplicarConfigGlobal();
-                statusDiv.innerText = '✅ Firma guardada correctamente';
+
+                // 2. Guardar URL en Google Sheets hoja Config
+                const params = new URLSearchParams({
+                    accion: 'guardar_config',
+                    clave: 'firmaGlobal',
+                    valor: data.secure_url
+                });
+                await fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' });
+
+                statusDiv.innerText = '✅ Firma guardada y sincronizada';
                 setTimeout(() => { statusDiv.innerText = ''; }, 3000);
             } else {
                 throw new Error('Error al subir');
@@ -1598,6 +1608,28 @@ Podrás subir uno nuevo después.`)) {
     }
 
     // ==========================================
+    // LEER CONFIGURACIÓN DESDE GOOGLE SHEETS
+    // ==========================================
+    async function leerConfigDesdeSheets(clave) {
+        try {
+            const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Config`;
+            const res = await fetch(url);
+            const text = await res.text();
+            const json = JSON.parse(text.replace(/^[^(]+\(/, '').replace(/\);?$/, ''));
+            const rows = json.table.rows || [];
+            for(const row of rows) {
+                const k = row.c[0] ? String(row.c[0].v || '') : '';
+                const v = row.c[1] ? String(row.c[1].v || '') : '';
+                if(k === clave) return v;
+            }
+            return null;
+        } catch(e) {
+            console.error('Error leyendo config:', e);
+            return null;
+        }
+    }
+
+    // ==========================================
     // LEER DATOS DESDE GOOGLE SHEETS
     // ==========================================
     async function leerDesdeSheets() {
@@ -1742,8 +1774,20 @@ Podrás subir uno nuevo después.`)) {
     }
 
     async function showDashboard() {
-        // Si es admin, sincronizar perfiles desde Google Sheets
-        // para que funcione desde cualquier dispositivo
+        if(esAdmin) {
+            try {
+                // Cargar firma global desde Sheets Config
+                const firmaNube = await leerConfigDesdeSheets('firmaGlobal');
+                if(firmaNube && firmaNube.startsWith('http')) {
+                    configGlobal.firmaGlobal = firmaNube;
+                    localStorage.setItem('config_global_huila', JSON.stringify(configGlobal));
+                    aplicarConfigGlobal();
+                }
+            } catch(e) {
+                console.error('Error cargando config:', e);
+            }
+        }
+
         if(esAdmin) {
             try {
                 const datosNube = await leerDesdeSheets();
