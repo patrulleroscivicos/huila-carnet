@@ -2044,31 +2044,16 @@
         const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxEktIPsLWN-3tpxgtCkErKbF4cRF6GQlY8-mujiC3jTd8sUPqfPw-nqfNLyS1Edp2e6A/exec';
 
         // Sesión de admin — guardada al hacer login, enviada en cada petición sensible
-        let sesionAdmin = { user: '', token: '' };
+        // Clave secreta compartida con Apps Script
+        const APP_KEY = 'PCH2026$huila';
 
-        function cargarSesion() {
-            try {
-                const raw = sessionStorage.getItem('adm_sesion');
-                if (raw) sesionAdmin = JSON.parse(raw);
-            } catch(e) {}
-        }
+        function cargarSesion() {}
+        function guardarSesion() {}
+        function limpiarSesion() {}
 
-        function guardarSesion(user, token) {
-            sesionAdmin = { user, token };
-            sessionStorage.setItem('adm_sesion', JSON.stringify(sesionAdmin));
-        }
-
-        function limpiarSesion() {
-            sesionAdmin = { user: '', token: '' };
-            sessionStorage.removeItem('adm_sesion');
-        }
-
-        // Agrega user y sesion a cualquier URLSearchParams para autenticar la petición
+        // Agrega la clave secreta a cada petición
         function conSesion(params) {
-            if (sesionAdmin.token) {
-                params.append('user', sesionAdmin.user);
-                params.append('sesion', sesionAdmin.token);
-            }
+            params.append('appkey', APP_KEY);
             return params;
         }
 
@@ -2304,7 +2289,6 @@
                 if (tokenData.ok && tokenData.autorizado) {
                     resetearBloqueo();
                     // Guardar sesión para autenticar peticiones futuras
-                    guardarSesion(user, tokenData.sesion || '');
                     fbIniciarSesion('admin@huilacarnet.com', 'Huila322$patrulleros.').catch(() => {});
                     document.body.classList.remove('user-mode');
                     document.body.classList.add('admin-mode');
@@ -4301,7 +4285,6 @@ Podrás subir uno nuevo después.`)) {
 
         function logout() {
             fbCerrarSesion();
-            limpiarSesion(); // Destruir token de sesión
             var sidebar = document.getElementById('sidebar');
             if (sidebar) sidebar.classList.remove('visible');
             var toggle = document.getElementById('sidebar-toggle');
@@ -4333,8 +4316,6 @@ Podrás subir uno nuevo después.`)) {
 
         // Detectar si entraron por QR o solo están recargando la página
         window.onload = async () => {
-
-            cargarSesion(); // Restaurar sesión admin si existe
 
             // Migrar contraseñas texto plano a hash al cargar
             let migrado = false;
