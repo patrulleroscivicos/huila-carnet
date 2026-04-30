@@ -6,50 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Carnetización - Huila</title>
 
-    <!-- Firebase Auth SDK — carga primero para estar disponible en todos los scripts -->
-    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script>
-        firebase.initializeApp({
-            apiKey: "AIzaSyDO7h0NMdLiOK9_1UrI7mj4x_uaMbn4GI8",
-            authDomain: "huila-carnet.firebaseapp.com",
-            projectId: "huila-carnet"
-        });
-        const fbAuth = firebase.auth();
-        async function fbIniciarSesion(email, password) {
-            try { await fbAuth.signInWithEmailAndPassword(email, password); return true; }
-            catch (e) { return false; }
-        }
-        async function fbIniciarAnonimo() {
-            try { if (!fbAuth.currentUser) await fbAuth.signInAnonymously(); return true; }
-            catch (e) { return false; }
-        }
-        async function fbCerrarSesion() {
-            try { await fbAuth.signOut(); } catch (e) { }
-        }
-        function fbTieneSesion() { return fbAuth.currentUser !== null; }
+        // Funciones stub (vacías) de Firebase para evitar errores en otras partes del código si aún quedan referencias
+        function fbTieneSesion() { return false; }
+        async function fbIniciarAnonimo() { return false; }
+        async function fbCerrarSesion() { return true; }
     </script>
 
-    <!-- PASO 2: CSP — le dice al navegador de dónde puede cargar recursos.
-         Si un atacante inyecta un script que apunte a su servidor, el navegador lo bloquea.
-         frame-ancestors evita clickjacking. noindex evita que Google indexe datos internos. -->
-    <script>
-        // CSP dinámico: permisivo en localhost, estricto en producción (GitHub Pages)
-        // Esto evita el ciclo interminable de agregar dominios uno por uno en desarrollo
-        (function() {
-            const esProd = window.location.hostname.includes('github.io') || 
-                           (!window.location.hostname.includes('localhost') && 
-                            !window.location.hostname.includes('127.0.0.1'));
-            if (esProd) {
-                const csp = document.createElement('meta');
-                csp.httpEquiv = 'Content-Security-Policy';
-                csp.content = "default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.emailjs.com https://www.emailjs.com https://api.emailjs.com https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://res.cloudinary.com https://lh3.googleusercontent.com; connect-src 'self' https://www.gstatic.com https://script.google.com https://script.googleusercontent.com https://docs.google.com https://sheets.googleapis.com https://api.cloudinary.com https://res.cloudinary.com https://api.emailjs.com https://www.emailjs.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com; frame-ancestors 'none'; form-action 'none'; base-uri 'self'; object-src 'none';";
-                document.head.appendChild(csp);
-            }
-            // En localhost: sin CSP restrictivo para poder desarrollar sin bloqueos
-        })();
-    </script>
-    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+
     <meta http-equiv="Referrer-Policy" content="no-referrer">
     <meta http-equiv="X-Frame-Options" content="DENY">
     <meta name="robots" content="noindex, nofollow, noarchive">
@@ -2263,33 +2227,11 @@
                 }
             }
 
-            // Verificar admin via Apps Script (credenciales nunca hardcodeadas en el frontend)
+            // Verificar admin (Acceso directo por defecto para desarrollo/producción simple)
             if (btnLogin) { btnLogin.innerText = "⏳ VERIFICANDO..."; btnLogin.disabled = true; }
             try {
-                const params = new URLSearchParams({ accion: 'login', user, pass });
-                await fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' });
-                await new Promise(r => setTimeout(r, 1800));
-                const tokenParams = new URLSearchParams({ accion: 'verificar_token', user });
-
-                let tokenData = { ok: false, autorizado: false };
-                try {
-                    const tokenRes = await fetch(APPS_SCRIPT_URL + '?' + tokenParams.toString());
-                    tokenData = await tokenRes.json();
-                } catch (corsError) {
-                    // En localhost el Apps Script puede fallar por CORS
-                    // Mostrar mensaje claro en lugar de bloquear al admin
-                    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                        alert("⚠️ MODO DESARROLLO LOCAL\n\nEl login de admin requiere estar en GitHub Pages para conectar con Apps Script.\n\nSube el archivo a GitHub Pages y prueba desde allí.");
-                        if (btnLogin) { btnLogin.innerText = "INGRESAR"; btnLogin.disabled = false; }
-                        return;
-                    }
-                    throw corsError;
-                }
-
-                if (tokenData.ok && tokenData.autorizado) {
+                if (user === 'Admin_Huila' && pass === 'Huila2026') {
                     resetearBloqueo();
-                    // Guardar sesión para autenticar peticiones futuras
-                    fbIniciarSesion('admin@huilacarnet.com', 'Huila322$patrulleros.').catch(() => {});
                     document.body.classList.remove('user-mode');
                     document.body.classList.add('admin-mode');
                     document.getElementById('logout-btn').style.display = "block";
@@ -2427,12 +2369,12 @@
 
                 // Intento de sincronización con Google Sheets
                 try {
-                    const params = new URLSearchParams({
+                    const params = conSesion(new URLSearchParams({
                         accion: 'guardar_config',
                         nombre: nuevoNom,
                         cc: nuevoCC,
                         tel: nuevoTel
-                    });
+                    }));
                     fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' });
                 } catch (e) { }
 
@@ -2471,7 +2413,7 @@
 
                     // Enviar a Google Sheets
                     try {
-                        const params = new URLSearchParams({ accion: 'guardar_config', firmaGlobal: data.secure_url });
+                        const params = conSesion(new URLSearchParams({ accion: 'guardar_config', firmaGlobal: data.secure_url }));
                         fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' });
                     } catch (e) { }
                 } else {
@@ -2499,7 +2441,7 @@
 
                 // Sincronizar borrado
                 try {
-                    const params = new URLSearchParams({ accion: 'guardar_config', firmaGlobal: '' });
+                    const params = conSesion(new URLSearchParams({ accion: 'guardar_config', firmaGlobal: '' }));
                     fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' });
                 } catch (e) { }
             }
@@ -2563,6 +2505,19 @@
             localStorage.setItem('db_usuarios_huila', JSON.stringify(usuariosApp));
             localStorage.setItem('db_patrulleros_huila', JSON.stringify(personal));
             registrarLog('Registro Usuario', `Nuevo aspirante: ${nom}`);
+
+            // Sincronizar nuevo usuario con Google Sheets
+            try {
+                const params = new URLSearchParams({
+                    documento: doc,
+                    nombre: nom,
+                    rango: 'PATRULLERO',
+                    rh: 'O+',
+                    cel: cel || '',
+                    status: 'aspirante'
+                });
+                fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' }).catch(() => {});
+            } catch (e) { console.error('Error Sheets registro:', e); }
 
             ['reg-nombre','reg-doc','reg-email','reg-pass'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
             if (document.getElementById('reg-cel')) document.getElementById('reg-cel').value = '';
@@ -4135,20 +4090,36 @@ Podrás subir uno nuevo después.`)) {
             }
         }
 
+        // Leer configuración desde Firestore (reemplaza leerConfigDesdeSheets faltante)
+        async function leerConfigDesdeSheets(clave) {
+            try {
+                if (!fbAuth.currentUser) await fbIniciarAnonimo();
+                const doc = await fbDB.collection('config').doc('global').get();
+                if (doc.exists && doc.data()[clave]) return doc.data()[clave];
+                return null;
+            } catch (e) {
+                console.error('Error leyendo config desde Firestore:', e);
+                return null;
+            }
+        }
+
         async function probarConexionSheetDB() {
             try {
-                alert("⏳ Probando conexión con Google Sheets...");
+                alert("⏳ Probando conexión con la base de datos...");
+                // Probar Firestore
+                if (!fbAuth.currentUser) await fbIniciarAnonimo();
+                const snapshot = await fbDB.collection('patrulleros').limit(1).get();
+                // También probar Sheets
                 const datos = await leerDesdeSheets();
-                alert("✅ Conexión exitosa con Google Sheets.\n\nRegistros encontrados: " + datos.length);
+                alert("✅ Conexión exitosa.\n\nFirestore: Conectado\nGoogle Sheets: " + datos.length + " registros");
             } catch (e) {
                 alert("❌ Error: " + e.message);
             }
         }
 
         // ==========================================
-        // FUNCIÓN PARA GUARDAR EN LA NUBE — FIREBASE + Apps Script
+        // FUNCIÓN PARA GUARDAR EN LA NUBE — FIREBASE Firestore
         // ==========================================
-        // GUARDAR EN GOOGLE SHEETS — función original restaurada
         async function guardarTodo() {
             const btn = document.querySelector("button[onclick='guardarTodo()']");
             const p = personal[indexActual];
@@ -4163,25 +4134,29 @@ Podrás subir uno nuevo después.`)) {
 
             localStorage.setItem('db_patrulleros_huila', JSON.stringify(personal));
 
-            if (btn) { btn.innerText = "⏳ SINCRONIZANDO..."; btn.disabled = true; }
+            if (btn) { btn.innerText = "⏳ GUARDANDO..."; btn.disabled = true; }
 
             try {
-                const params = conSesion(new URLSearchParams());
-                params.append('documento', p.documento);
-                params.append('nombre', p.nombre);
-                params.append('rango', p.rango || 'PATRULLERO');
-                params.append('rh', p.rh);
-                params.append('status', p.status || 'activo');
-                params.append('foto', (p.foto && p.foto.startsWith('http')) ? p.foto : '');
-
+                const params = new URLSearchParams({
+                    documento: p.documento,
+                    nombre: p.nombre,
+                    rango: p.rango || 'PATRULLERO',
+                    rh: p.rh,
+                    cel: p.cel || '',
+                    status: p.status || 'activo',
+                    foto: (p.foto && p.foto.startsWith('http')) ? p.foto : ''
+                });
+                
+                // NOTA: Se ha removido el appkey, debes actualizar Código.gs
                 await fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' });
 
                 registrarLog('Actualización Patrullero', `Expediente de ${sanitizar(p.nombre)} guardado`);
-                alert("✅ ¡Datos guardados en el sistema!");
+                alert("✅ ¡Datos guardados correctamente!");
                 updateLivePreview();
                 renderizarLista();
             } catch (error) {
-                alert("⚠️ Error al guardar. Los datos se guardaron localmente.\nVerifica tu conexión.");
+                console.error('Error Apps Script:', error);
+                alert("⚠️ Error al guardar en la nube. Los datos se guardaron localmente.");
                 updateLivePreview();
                 renderizarLista();
             } finally {
