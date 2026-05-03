@@ -52,8 +52,8 @@
 
         body {
             background-color: #050505;
-            background-image: 
-                linear-gradient(45deg, #0a0a0a 25%, transparent 25%, transparent 75%, #0a0a0a 75%, #0a0a0a), 
+            background-image:
+                linear-gradient(45deg, #0a0a0a 25%, transparent 25%, transparent 75%, #0a0a0a 75%, #0a0a0a),
                 linear-gradient(45deg, #0a0a0a 25%, transparent 25%, transparent 75%, #0a0a0a 75%, #0a0a0a);
             background-size: 60px 60px;
             background-position: 0 0, 30px 30px;
@@ -661,7 +661,7 @@
             padding: 15px;
             position: relative;
             overflow: hidden;
-            box-shadow: inset 0 1px 1px rgba(255,255,255,0.1), 0 8px 25px rgba(0,0,0,0.8);
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1), 0 8px 25px rgba(0, 0, 0, 0.8);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             display: flex;
             flex-direction: column;
@@ -671,7 +671,7 @@
 
         .stat-card-premium:hover {
             transform: translateY(-5px);
-            box-shadow: inset 0 1px 1px rgba(255,255,255,0.2), 0 12px 35px rgba(0,0,0,0.9);
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.2), 0 12px 35px rgba(0, 0, 0, 0.9);
             border-color: #333;
         }
 
@@ -694,13 +694,13 @@
             text-align: center;
             margin: 5px 0;
             font-family: 'Syne', sans-serif;
-            text-shadow: 0 0 10px rgba(212,175,55,0.3);
+            text-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
             color: var(--gold) !important;
         }
 
         .card-red .card-value {
             color: #f87171 !important;
-            text-shadow: 0 0 10px rgba(248,113,113,0.3) !important;
+            text-shadow: 0 0 10px rgba(248, 113, 113, 0.3) !important;
         }
 
         .card-red .card-glow-bar {
@@ -725,9 +725,9 @@
             left: 5%;
             width: 90%;
             height: 12px;
-            background: rgba(212,175,55,0.05);
+            background: rgba(212, 175, 55, 0.05);
             border-radius: 8px 8px 0 0;
-            border-top: 1px solid rgba(212,175,55,0.1);
+            border-top: 1px solid rgba(212, 175, 55, 0.1);
         }
 
         .stat-card-premium .card-icon-top {
@@ -743,7 +743,7 @@
             background: #000;
             border: 1px solid #1a1a1a;
             border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
             margin-bottom: 20px;
             animation: fadeIn 0.5s ease-out;
         }
@@ -1291,7 +1291,7 @@
 
                 <div id="dashboard-stats" class="admin-only"
                     style="display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin-bottom:25px;">
-                    
+
                     <div class="stat-card-premium card-green">
                         <div class="card-icon-top">📅</div>
                         <div class="card-label">ACTIVOS</div>
@@ -1310,8 +1310,10 @@
 
                     <div class="stat-card-premium card-teal">
                         <div class="card-icon-top">💵</div>
-                        <div class="card-label">BALANCE GRAL. <span style="font-size:10px; opacity:0.6;">USD</span></div>
-                        <div class="card-value" style="font-size:24px; display:flex; align-items:center; justify-content:center; gap:5px;">
+                        <div class="card-label">BALANCE GRAL. <span style="font-size:10px; opacity:0.6;">COP</span>
+                        </div>
+                        <div class="card-value"
+                            style="font-size:24px; display:flex; align-items:center; justify-content:center; gap:5px;">
                             <span id="stat-balance-gral">$0</span>
                             <span style="font-size:16px;">↗</span>
                         </div>
@@ -1744,20 +1746,26 @@
                 <div class="dash-card" style="margin-top:20px; padding:25px;">
                     <div class="dash-card-header"><span class="dash-card-label">📢 Mensaje Global WhatsApp</span></div>
                     <div style="margin-bottom:15px;">
-                        <p style="font-size:12px; color:#888; line-height:1.6;">Escribe un mensaje para enviarlo a todos los patrulleros que tengan un número de celular registrado.</p>
+                        <p style="font-size:12px; color:#888; line-height:1.6;">Escribe un mensaje para enviarlo a todos
+                            los patrulleros que tengan un número de celular registrado.</p>
                     </div>
                     <div class="form-group">
                         <label>Mensaje a enviar</label>
-                        <textarea id="global-whatsapp-msg" placeholder="Escribe aquí tu mensaje..." 
+                        <textarea id="global-whatsapp-msg" placeholder="Escribe aquí tu mensaje..."
                             style="min-height:100px; background:#111; color:#fff; border:1px solid #333; border-radius:8px; padding:12px; width:100%; font-family:inherit; resize:vertical; font-size:13px;"></textarea>
                     </div>
                     <div style="display:flex; gap:10px; margin-top:15px;">
-                        <button onclick="enviarMensajeGlobal()" class="btn btn-success" style="flex:2; font-weight:bold; padding:12px;">🚀 ENVIAR A TODOS</button>
-                        <button onclick="borrarMensajeGlobal()" class="btn btn-danger" style="flex:1; padding:12px;">🗑️ BORRAR</button>
+                        <button onclick="enviarMensajeGlobal()" class="btn btn-success"
+                            style="flex:2; font-weight:bold; padding:12px;">🚀 ENVIAR A TODOS</button>
+                        <button onclick="borrarMensajeGlobal()" class="btn btn-danger" style="flex:1; padding:12px;">🗑️
+                            BORRAR</button>
                     </div>
-                    <div id="global-send-status" style="margin-top:15px; font-size:13px; color:var(--gold); display:none; background:rgba(212,175,55,0.05); padding:15px; border-radius:8px; border:1px solid #d4af3744;">
+                    <div id="global-send-status"
+                        style="margin-top:15px; font-size:13px; color:var(--gold); display:none; background:rgba(212,175,55,0.05); padding:15px; border-radius:8px; border:1px solid #d4af3744;">
                         <div id="global-send-info" style="line-height:1.5;"></div>
-                        <button id="btn-next-send" class="btn btn-primary" style="margin-top:12px; width:100%; background:var(--gold); color:#000; font-weight:800; display:none;">ABRIR WHATSAPP SIGUIENTE</button>
+                        <button id="btn-next-send" class="btn btn-primary"
+                            style="margin-top:12px; width:100%; background:var(--gold); color:#000; font-weight:800; display:none;">ABRIR
+                            WHATSAPP SIGUIENTE</button>
                     </div>
                 </div>
             </div>
@@ -1894,7 +1902,7 @@
                 </details>
 
                 <!-- CONDECORACIONES -->
-                <div style="margin-top:25px; border-top:1px solid #333; padding-top:20px;">
+                <div class="admin-only" style="margin-top:25px; border-top:1px solid #333; padding-top:20px;">
                     <h4 style="color:var(--gold); margin:0 0 15px; font-size:14px;">🏅 Condecoraciones</h4>
                     <div id="condecoraciones-grid"
                         style="display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:8px;">
@@ -1912,8 +1920,10 @@
                 <!-- CONTABILIDAD INDIVIDUAL -->
                 <div class="admin-only" style="margin-top:25px; border-top:1px solid #333; padding-top:20px;">
                     <h4 style="color:var(--gold); margin:0 0 15px; font-size:14px;">💰 Estado de Pagos</h4>
-                    <div id="pagos-resumen" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:15px;">
-                        <div style="background:#1a1a1a; border-radius:8px; padding:12px; text-align:center; position:relative;">
+                    <div id="pagos-resumen"
+                        style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:15px;">
+                        <div
+                            style="background:#1a1a1a; border-radius:8px; padding:12px; text-align:center; position:relative;">
                             <div style="font-size:22px; font-weight:bold; color:#e74c3c;" id="pago-deuda">$0</div>
                             <div style="font-size:11px; color:#aaa;">Deuda Total</div>
                             <button onclick="editarDeuda()" class="admin-only"
@@ -1921,7 +1931,8 @@
                                 title="Editar Deuda">✏️</button>
                         </div>
                         <div style="background:#1a1a1a; border-radius:8px; padding:12px; text-align:center;">
-                            <div style="font-size:22px; font-weight:bold; color:#2ecc71;" id="pago-meses-adelante">0</div>
+                            <div style="font-size:22px; font-weight:bold; color:#2ecc71;" id="pago-meses-adelante">0
+                            </div>
                             <div style="font-size:11px; color:#aaa;">Meses adelantados</div>
                         </div>
                     </div>
@@ -1934,7 +1945,8 @@
                             ✅ Registrar Abono
                         </button>
                     </div>
-                    <div id="historial-pagos" style="max-height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;"></div>
+                    <div id="historial-pagos"
+                        style="max-height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;"></div>
                 </div>
 
             </div>
@@ -2011,9 +2023,9 @@
         // Clave secreta compartida con Apps Script
         const APP_KEY = 'PCH2026$huila';
 
-        function cargarSesion() {}
-        function guardarSesion() {}
-        function limpiarSesion() {}
+        function cargarSesion() { }
+        function guardarSesion() { }
+        function limpiarSesion() { }
 
         // Agrega la clave secreta a cada petición
         function conSesion(params) {
@@ -2027,12 +2039,12 @@
         const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`;
 
         // 2. VARIABLES GLOBALES
-        let personal     = JSON.parse(localStorage.getItem('db_patrulleros_huila'))  || [];
-        let usuariosApp  = JSON.parse(localStorage.getItem('db_usuarios_huila'))     || [];
-        let actividades  = JSON.parse(localStorage.getItem('db_actividades_huila'))  || [];
+        let personal = JSON.parse(localStorage.getItem('db_patrulleros_huila')) || [];
+        let usuariosApp = JSON.parse(localStorage.getItem('db_usuarios_huila')) || [];
+        let actividades = JSON.parse(localStorage.getItem('db_actividades_huila')) || [];
         let contabilidad = JSON.parse(localStorage.getItem('db_contabilidad_huila')) || [];
-        let auditoria    = JSON.parse(localStorage.getItem('db_auditoria_huila'))    || [];
-        let configGlobal = JSON.parse(localStorage.getItem('config_global_huila'))   || { nombre: "Nombre del Presidente", cc: "C.C. 12.123.651 Neiva", tel: "315-7830273" };
+        let auditoria = JSON.parse(localStorage.getItem('db_auditoria_huila')) || [];
+        let configGlobal = JSON.parse(localStorage.getItem('config_global_huila')) || { nombre: "Nombre del Presidente", cc: "C.C. 12.123.651 Neiva", tel: "315-7830273" };
 
         let indexActual = null;
         let esAdmin = false;
@@ -2119,7 +2131,7 @@
         function sanitizar(texto) {
             if (texto === null || texto === undefined) return '';
             if (typeof texto !== 'string') texto = String(texto);
-            const mapa = { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#x27;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;' };
+            const mapa = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;', '/': '&#x2F;', '`': '&#x60;', '=': '&#x3D;' };
             return texto.replace(/[&<>"'`=/]/g, c => mapa[c]);
         }
 
@@ -2133,11 +2145,11 @@
         async function hashSeguro(password, salt) {
             if (!salt) {
                 const saltBytes = crypto.getRandomValues(new Uint8Array(16));
-                salt = Array.from(saltBytes).map(b => b.toString(16).padStart(2,'0')).join('');
+                salt = Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('');
             }
             const datos = new TextEncoder().encode(password + salt);
             const hashBuffer = await crypto.subtle.digest('SHA-256', datos);
-            const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
+            const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
             return 'sha256:' + salt + ':' + hashHex;
         }
 
@@ -2199,7 +2211,7 @@
                 if (passValida) {
                     resetearBloqueo();
                     // Firebase Auth: sesión anónima — si falla no bloquea el acceso
-                    fbIniciarAnonimo().catch(() => {});
+                    fbIniciarAnonimo().catch(() => { });
                     document.body.classList.add('user-mode');
                     document.body.classList.remove('admin-mode');
                     document.getElementById('logout-btn').style.display = "block";
@@ -2311,7 +2323,7 @@
 
             // Filtrar patrulleros con celular (mínimo 10 dígitos)
             colaEnvioGlobal = personal.filter(p => p.cel && p.cel.replace(/[^0-9]/g, '').length >= 10);
-            
+
             if (colaEnvioGlobal.length === 0) {
                 alert("No hay patrulleros con número de celular registrado.");
                 return;
@@ -2330,7 +2342,7 @@
             const msg = document.getElementById('global-whatsapp-msg').value.trim();
 
             statusDiv.style.display = 'block';
-            
+
             if (indexColaGlobal < colaEnvioGlobal.length) {
                 const p = colaEnvioGlobal[indexColaGlobal];
                 infoDiv.innerHTML = `
@@ -2340,7 +2352,7 @@
                     <div style="font-size:11px; color:#555;">Número: ${p.cel}</div>
                 `;
                 btnNext.style.display = 'block';
-                btnNext.onclick = function() {
+                btnNext.onclick = function () {
                     const cel = p.cel.replace(/[^0-9]/g, '');
                     const url = `https://wa.me/57${cel}?text=${encodeURIComponent(msg)}`;
                     window.open(url, '_blank');
@@ -2471,10 +2483,10 @@
         // 5. REGISTRO DE USUARIOS
         async function registrarNuevoUsuario() {
             // SEGURIDAD v2: sanitizar todos los campos antes de guardar
-            const nom  = sanitizar(document.getElementById('reg-nombre').value.trim());
-            const doc  = sanitizar(document.getElementById('reg-doc').value.trim());
+            const nom = sanitizar(document.getElementById('reg-nombre').value.trim());
+            const doc = sanitizar(document.getElementById('reg-doc').value.trim());
             const email = document.getElementById('reg-email').value.trim().toLowerCase();
-            const cel  = document.getElementById('reg-cel') ? sanitizar(document.getElementById('reg-cel').value.trim()) : '';
+            const cel = document.getElementById('reg-cel') ? sanitizar(document.getElementById('reg-cel').value.trim()) : '';
             const pass = document.getElementById('reg-pass').value;
 
             if (!nom || !doc || !email || !pass) { alert("Por favor completa todos los campos."); return; }
@@ -2495,7 +2507,7 @@
 
             usuariosApp.push({ nom, doc, email, cel, pass: passHash, rol: 'usuario' });
             personal.push({
-                nombre: nom, tipoDoc: "C.C.", documento: doc, cel: cel, rh: "O+",
+                nombre: nom, tipoDoc: "C.C.", documento: doc, email: email, pass: passHash, cel: cel, rh: "O+",
                 foto: "", firma: "", status: "aspirante", fase2Completada: false,
                 carnetGuardado: false, fechaIngreso: "", fechaInactivo: "",
                 archivos: { hojaVida: "", certEstudio: "", certBachiller: "" },
@@ -2511,15 +2523,17 @@
                 const params = new URLSearchParams({
                     documento: doc,
                     nombre: nom,
+                    email: email,
+                    password: passHash,
                     rango: 'PATRULLERO',
                     rh: 'O+',
                     cel: cel || '',
                     status: 'aspirante'
                 });
-                fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' }).catch(() => {});
+                fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' }).catch(() => { });
             } catch (e) { console.error('Error Sheets registro:', e); }
 
-            ['reg-nombre','reg-doc','reg-email','reg-pass'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+            ['reg-nombre', 'reg-doc', 'reg-email', 'reg-pass'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
             if (document.getElementById('reg-cel')) document.getElementById('reg-cel').value = '';
 
             alert("✅ Registro exitoso. Ahora puedes iniciar sesión.");
@@ -2707,17 +2721,17 @@
                     const filasMeses = mesesAdeudados.slice(0, 6).map(m => {
                         const [y, mes] = m.split('-');
                         return `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:#1a0000; border-radius:8px; border-left:3px solid #e74c3c;">
-                            <span style="color:#e74c3c; font-size:12px; font-weight:600;">❌ ${meses[parseInt(mes)-1]} ${y}</span>
+                            <span style="color:#e74c3c; font-size:12px; font-weight:600;">❌ ${meses[parseInt(mes) - 1]} ${y}</span>
                             <span style="color:#e74c3c; font-size:12px;">-$${CUOTA_MENSUAL.toLocaleString('es-CO')}</span>
                         </div>`;
                     }).join('');
 
-                    const filasPagados = entradas.filter(([k,v]) => v==='pagado'||v==='cubierto').slice(0,6).map(([k,v]) => {
+                    const filasPagados = entradas.filter(([k, v]) => v === 'pagado' || v === 'cubierto').slice(0, 6).map(([k, v]) => {
                         const [y, mes] = k.split('-');
                         return `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:#001a00; border-radius:8px; border-left:3px solid #27ae60;">
-                            <span style="color:#27ae60; font-size:12px; font-weight:600;">${v==='cubierto'?'🔵':'✅'} ${meses[parseInt(mes)-1]} ${y}</span>
+                            <span style="color:#27ae60; font-size:12px; font-weight:600;">${v === 'cubierto' ? '🔵' : '✅'} ${meses[parseInt(mes) - 1]} ${y}</span>
                             <div style="display:flex; align-items:center; gap:8px;">
-                                <span style="color:#27ae60; font-size:12px;">${v==='cubierto'?'Cubierto':'+$'+CUOTA_MENSUAL.toLocaleString('es-CO')}</span>
+                                <span style="color:#27ae60; font-size:12px;">${v === 'cubierto' ? 'Cubierto' : '+$' + CUOTA_MENSUAL.toLocaleString('es-CO')}</span>
                                 <button onclick="eliminarMesPago('${k}')" title="Eliminar pago"
                                     style="background:#c0392b; border:none; color:#fff; border-radius:4px; cursor:pointer; font-size:10px; padding:3px 7px; font-weight:bold;">✕</button>
                             </div>
@@ -2728,11 +2742,11 @@
                     const filasAbonos = histAbonos.length > 0 ? `
                         <div style="border-top:1px solid #333; padding-top:8px; margin-top:4px;">
                             <p style="color:#888; font-size:11px; margin:0 0 6px; letter-spacing:1px; text-transform:uppercase;">Abonos registrados</p>
-                            ${histAbonos.map((a,i) => `
+                            ${histAbonos.map((a, i) => `
                             <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:#1a1500; border-radius:8px; border-left:3px solid #d4af37; margin-bottom:4px;">
                                 <div>
-                                    <div style="color:#d4af37; font-size:12px; font-weight:600;">💵 $${(a.valor||0).toLocaleString('es-CO')}</div>
-                                    <div style="color:#888; font-size:10px;">${a.fecha} ${a.hora||''}</div>
+                                    <div style="color:#d4af37; font-size:12px; font-weight:600;">💵 $${(a.valor || 0).toLocaleString('es-CO')}</div>
+                                    <div style="color:#888; font-size:10px;">${a.fecha} ${a.hora || ''}</div>
                                 </div>
                                 <div style="display:flex; gap:6px;">
                                     <button onclick="editarAbono(${i})" title="Editar"
@@ -3122,14 +3136,14 @@
         function cambiarVista(vista) {
             // Asegurar que el dashboard esté visible y cerrar detalles
             cambiarSeccion('dashboard-section');
-            
+
             ['overview', 'units', 'calendar', 'finance', 'accounting', 'config', 'audit'].forEach(function (v) {
                 var el = document.getElementById('vista-' + v);
                 if (el) el.style.display = (v === vista) ? 'block' : 'none';
                 var nav = document.getElementById('nav-' + v);
                 if (nav) nav.classList.toggle('active', v === vista);
             });
-            
+
             if (vista === 'overview') { actualizarEstadisticas(); renderRecentUnits(); renderChartsOverview(); renderUpcomingActivitiesDash(); }
             if (vista === 'units') { renderizarLista(); actualizarEstadisticasUnits(); }
             if (vista === 'calendar') { renderCalendario(); }
@@ -3473,13 +3487,13 @@
                     responsive: true, maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: {
-                        y: { 
-                            ticks: { color: '#475569', font: { size: 10 }, callback: v => '$' + (v / 1000).toFixed(0) + 'k' }, 
+                        y: {
+                            ticks: { color: '#475569', font: { size: 10 }, callback: v => '$' + (v / 1000).toFixed(0) + 'k' },
                             grid: { color: '#1e293b' },
                             border: { display: false }
                         },
-                        x: { 
-                            ticks: { color: '#475569', font: { size: 10 } }, 
+                        x: {
+                            ticks: { color: '#475569', font: { size: 10 } },
                             grid: { display: false },
                             border: { display: false }
                         }
@@ -3557,11 +3571,11 @@
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { 
-                        legend: { 
+                    plugins: {
+                        legend: {
                             position: 'top',
-                            labels: { color: '#94a3b8', font: { size: 10 }, usePointStyle: true } 
-                        } 
+                            labels: { color: '#94a3b8', font: { size: 10 }, usePointStyle: true }
+                        }
                     },
                     scales: {
                         x: { ticks: { color: '#475569', font: { size: 10 } }, grid: { color: '#1e293b' }, border: { display: false } },
@@ -3786,13 +3800,13 @@
             const file = input.files[0];
 
             // SEGURIDAD v2: validar tipo y tamaño antes de procesar o subir
-            const TIPOS_PERMITIDOS = new Set(['image/jpeg','image/jpg','image/png','image/webp']);
+            const TIPOS_PERMITIDOS = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
             const MAX_BYTES = 5 * 1024 * 1024; // 5MB
             if (!TIPOS_PERMITIDOS.has(file.type)) { alert('❌ Solo se aceptan imágenes JPG, PNG o WEBP.'); input.value = ''; return; }
             if (file.size > MAX_BYTES) { alert('❌ La imagen no puede superar 5MB.'); input.value = ''; return; }
             // Nombres con extensiones dobles peligrosas (ej: foto.jpg.html)
             const nombreLow = file.name.toLowerCase();
-            if (['.html','.htm','.js','.php','.exe','.sh','.py'].some(ext => nombreLow.includes(ext))) { alert('❌ Nombre de archivo sospechoso. Rechazado.'); input.value = ''; return; }
+            if (['.html', '.htm', '.js', '.php', '.exe', '.sh', '.py'].some(ext => nombreLow.includes(ext))) { alert('❌ Nombre de archivo sospechoso. Rechazado.'); input.value = ''; return; }
 
             if (tipo === 'firma') {
                 // La firma se guarda en base64 local (solo admin la ve, no va a la nube)
@@ -4124,10 +4138,10 @@ Podrás subir uno nuevo después.`)) {
             const btn = document.querySelector("button[onclick='guardarTodo()']");
             const p = personal[indexActual];
 
-            p.nombre    = document.getElementById('edit-name').value.trim();
-            p.rango     = document.getElementById('edit-rango').value.trim();
+            p.nombre = document.getElementById('edit-name').value.trim();
+            p.rango = document.getElementById('edit-rango').value.trim();
             p.documento = document.getElementById('edit-doc-num').value.trim();
-            p.rh        = document.getElementById('edit-rh').value.trim();
+            p.rh = document.getElementById('edit-rh').value.trim();
             if (document.getElementById('edit-cel')) p.cel = document.getElementById('edit-cel').value.trim();
             const tipoDocInput = document.getElementById('edit-doc-type');
             if (tipoDocInput) p.tipoDoc = tipoDocInput.value;
@@ -4137,16 +4151,23 @@ Podrás subir uno nuevo después.`)) {
             if (btn) { btn.innerText = "⏳ GUARDANDO..."; btn.disabled = true; }
 
             try {
+                // Obtener email y password para sincronizar
+                const userApp = usuariosApp.find(u => u.doc === p.documento);
+                const emailSync = p.email || (userApp ? userApp.email : '');
+                const passSync = p.pass || (userApp ? userApp.pass : '');
+
                 const params = new URLSearchParams({
                     documento: p.documento,
                     nombre: p.nombre,
+                    email: emailSync,
+                    password: passSync,
                     rango: p.rango || 'PATRULLERO',
                     rh: p.rh,
                     cel: p.cel || '',
                     status: p.status || 'activo',
                     foto: (p.foto && p.foto.startsWith('http')) ? p.foto : ''
                 });
-                
+
                 // NOTA: Se ha removido el appkey, debes actualizar Código.gs
                 await fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' });
 
@@ -4278,7 +4299,7 @@ Podrás subir uno nuevo después.`)) {
             // Notificar a Google Sheets en paralelo (no bloqueante)
             try {
                 const params = conSesion(new URLSearchParams({ accion: 'eliminar', documento: p.documento }));
-                fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' }).catch(() => {});
+                fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' }).catch(() => { });
             } catch (e) { }
             alert("✅ Registro eliminado correctamente.");
             // Actualizar TODAS las vistas del dashboard
@@ -4457,11 +4478,15 @@ Podrás subir uno nuevo después.`)) {
     </div>
 
     <!-- MODAL EDITAR DEUDA -->
-    <div id="modal-editar-deuda" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center;">
-        <div style="background:#1a1a1a; border:1px solid #d4af37; border-radius:12px; padding:28px; width:320px; text-align:center;">
+    <div id="modal-editar-deuda"
+        style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center;">
+        <div
+            style="background:#1a1a1a; border:1px solid #d4af37; border-radius:12px; padding:28px; width:320px; text-align:center;">
             <h3 style="color:#d4af37; margin:0 0 8px;">✏️ Editar Deuda</h3>
-            <p style="color:#aaa; font-size:13px; margin:0 0 16px;">Deuda actual: <strong id="deuda-edit-actual" style="color:#e74c3c;"></strong></p>
-            <label style="color:#d4af37; font-size:12px; display:block; text-align:left; margin-bottom:4px;">Nuevo valor total de la deuda ($)</label>
+            <p style="color:#aaa; font-size:13px; margin:0 0 16px;">Deuda actual: <strong id="deuda-edit-actual"
+                    style="color:#e74c3c;"></strong></p>
+            <label style="color:#d4af37; font-size:12px; display:block; text-align:left; margin-bottom:4px;">Nuevo valor
+                total de la deuda ($)</label>
             <input id="deuda-edit-valor" type="number" min="0"
                 style="width:100%; background:#2a2a2a; color:#fff; border:1px solid #444; padding:10px; border-radius:6px; font-size:15px; box-sizing:border-box; margin-bottom:16px;">
             <div style="display:flex; gap:10px;">
@@ -4474,11 +4499,14 @@ Podrás subir uno nuevo después.`)) {
     </div>
 
     <!-- MODAL EDITAR ABONO -->
-    <div id="modal-editar-abono" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center;">
-        <div style="background:#1a1a1a; border:1px solid #d4af37; border-radius:12px; padding:28px; width:320px; text-align:center;">
+    <div id="modal-editar-abono"
+        style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center;">
+        <div
+            style="background:#1a1a1a; border:1px solid #d4af37; border-radius:12px; padding:28px; width:320px; text-align:center;">
             <h3 style="color:#d4af37; margin:0 0 16px;">✏️ Editar Abono</h3>
             <input id="abono-edit-idx" type="hidden">
-            <label style="color:#d4af37; font-size:12px; display:block; text-align:left; margin-bottom:4px;">Nuevo valor del abono ($)</label>
+            <label style="color:#d4af37; font-size:12px; display:block; text-align:left; margin-bottom:4px;">Nuevo valor
+                del abono ($)</label>
             <input id="abono-edit-valor" type="number" min="1"
                 style="width:100%; background:#2a2a2a; color:#fff; border:1px solid #444; padding:10px; border-radius:6px; font-size:15px; box-sizing:border-box; margin-bottom:16px;">
             <div style="display:flex; gap:10px;">
