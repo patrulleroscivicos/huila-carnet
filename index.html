@@ -40,6 +40,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
             --dark-bg: #0f0f0f;
@@ -1593,6 +1594,9 @@
                         <button onclick="abrirModalContable('egreso')"
                             style="background:#c0392b;color:#fff;border:none;padding:10px 20px;font-weight:700;font-size:12px;cursor:pointer;border-radius:6px;">+
                             EGRESO</button>
+                        <button onclick="cerrarCaja()"
+                            style="background:#d4af37;color:#000;border:none;padding:10px 20px;font-weight:700;font-size:12px;cursor:pointer;border-radius:6px;">💼
+                            CERRAR CAJA</button>
                     </div>
                 </div>
                 <div class="dash-card"
@@ -1613,7 +1617,8 @@
                     </div>
                 </div>
                 <div class="dash-card">
-                    <div class="dash-card-header"><span class="dash-card-label">Historial de Movimientos</span></div>
+                    <div class="dash-card-header"><span class="dash-card-label">Historial de Movimientos Actuales</span>
+                    </div>
                     <div style="overflow-x:auto;">
                         <table class="table-prof">
                             <thead>
@@ -1626,6 +1631,29 @@
                                 </tr>
                             </thead>
                             <tbody id="accounting-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN: HISTORIAL DE CIERRES -->
+                <div class="dash-card" style="margin-top:20px;">
+                    <div class="dash-card-header">
+                        <span class="dash-card-label">Historial de Cierres de Caja Mensuales</span>
+                        <div class="icon-right">📁</div>
+                    </div>
+                    <div style="overflow-x:auto;">
+                        <table class="table-prof">
+                            <thead>
+                                <tr>
+                                    <th>FECHA CIERRE</th>
+                                    <th>PERIODO</th>
+                                    <th>TOTAL INGRESOS</th>
+                                    <th>TOTAL EGRESOS</th>
+                                    <th>BALANCE</th>
+                                    <th>REPORTE</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cierres-tbody"></tbody>
                         </table>
                     </div>
                 </div>
@@ -2016,7 +2044,11 @@
         // Google Sheets como base de datos
         const SHEET_ID = '1nzJ1-VeRLWIBkBG01Qoz84O-jUFYKmDVGOZz91YZksc';
         const SHEET_NAME = 'Hoja 1';
+        const SHEET_CIERRES_NAME = 'Cierre caja';
+        const SHEET_MOVIMIENTOS_NAME = 'Movimientos';
         const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}`;
+        const SHEET_CIERRES_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_CIERRES_NAME}`;
+        const SHEET_MOVIMIENTOS_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_MOVIMIENTOS_NAME}`;
         const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxEktIPsLWN-3tpxgtCkErKbF4cRF6GQlY8-mujiC3jTd8sUPqfPw-nqfNLyS1Edp2e6A/exec';
 
         // Sesión de admin — guardada al hacer login, enviada en cada petición sensible
@@ -2043,6 +2075,7 @@
         let usuariosApp = JSON.parse(localStorage.getItem('db_usuarios_huila')) || [];
         let actividades = JSON.parse(localStorage.getItem('db_actividades_huila')) || [];
         let contabilidad = JSON.parse(localStorage.getItem('db_contabilidad_huila')) || [];
+        let cierresCaja = JSON.parse(localStorage.getItem('db_cierres_huila')) || [];
         let auditoria = JSON.parse(localStorage.getItem('db_auditoria_huila')) || [];
         let configGlobal = JSON.parse(localStorage.getItem('config_global_huila')) || { nombre: "Nombre del Presidente", cc: "C.C. 12.123.651 Neiva", tel: "315-7830273" };
 
@@ -2500,7 +2533,32 @@
             // SEGURIDAD v2: documento solo números y puntos
             if (!/^[\d.]+$/.test(doc)) { alert("❌ El número de documento solo debe contener números."); return; }
 
-            if (usuariosApp.find(u => u.doc === doc)) { alert("Este documento ya está registrado en el sistema."); return; }
+            // SEGURIDAD v2: Verificar contra nube en tiempo real si ya existe localmente
+            const docNormal = doc.replace(/\./g, '').trim();
+            const usuarioLocal = usuariosApp.find(u => (u.doc || '').replace(/\./g, '').trim() === docNormal);
+
+            if (usuarioLocal) {
+                try {
+                    // Si existe localmente, verificamos si todavía existe en la nube
+                    const datosNube = await leerDesdeSheets();
+                    if (datosNube) {
+                        const existeEnNube = datosNube.some(r => (r.documento || '').replace(/\./g, '').trim() === docNormal);
+                        if (existeEnNube) {
+                            alert("❌ Este documento ya está registrado y activo en el sistema.");
+                            return;
+                        } else {
+                            // Si NO está en la nube, limpiamos el registro huérfano local
+                            usuariosApp = usuariosApp.filter(u => (u.doc || '').replace(/\./g, '').trim() !== docNormal);
+                            personal = personal.filter(p => (p.documento || '').replace(/\./g, '').trim() !== docNormal);
+                            localStorage.setItem('db_usuarios_huila', JSON.stringify(usuariosApp));
+                            localStorage.setItem('db_patrulleros_huila', JSON.stringify(personal));
+                        }
+                    }
+                } catch (e) {
+                    alert("❌ Este documento ya está registrado localmente. Si crees que es un error, contacta al administrador.");
+                    return;
+                }
+            }
 
             // SEGURIDAD v2: usar SHA-256 + salt (hashSeguro) en lugar del hash débil djb2
             const passHash = await hashSeguro(pass);
@@ -2508,6 +2566,7 @@
             usuariosApp.push({ nom, doc, email, cel, pass: passHash, rol: 'usuario' });
             personal.push({
                 nombre: nom, tipoDoc: "C.C.", documento: doc, email: email, pass: passHash, cel: cel, rh: "O+",
+                rango: "PATRULLERO CIVICO",
                 foto: "", firma: "", status: "aspirante", fase2Completada: false,
                 carnetGuardado: false, fechaIngreso: "", fechaInactivo: "",
                 archivos: { hojaVida: "", certEstudio: "", certBachiller: "" },
@@ -2520,16 +2579,19 @@
 
             // Sincronizar nuevo usuario con Google Sheets
             try {
-                const params = new URLSearchParams({
+                const params = conSesion(new URLSearchParams({
                     documento: doc,
                     nombre: nom,
                     email: email,
                     password: passHash,
+                    pass: passHash, // Parámetro redundante para asegurar compatibilidad
                     rango: 'PATRULLERO',
                     rh: 'O+',
                     cel: cel || '',
+                    celular: cel || '',
+                    telefono: cel || '',
                     status: 'aspirante'
-                });
+                }));
                 fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' }).catch(() => { });
             } catch (e) { console.error('Error Sheets registro:', e); }
 
@@ -2811,20 +2873,22 @@
 
         // Eliminar un abono del historial
         function eliminarAbono(idx) {
-            if (!confirm('¿Eliminar este abono? Los meses cubiertos por él volverán a adeudarse.')) return;
-            const p = personal[indexActual];
-            if (!p.historialAbonos) return;
+            mostrarAlerta("Confirmar Eliminación", "¿Eliminar este abono? Los meses cubiertos por él volverán a adeudarse.", true, function () {
+                const p = personal[indexActual];
+                if (!p.historialAbonos) return;
 
-            const valorAbono = p.historialAbonos[idx].valor;
-            p.historialAbonos.splice(idx, 1);
+                const valorAbono = p.historialAbonos[idx].valor;
+                p.historialAbonos.splice(idx, 1);
 
-            // Reducir saldo a favor y recalcular
-            p.saldoAFavor = Math.max(0, (p.saldoAFavor || 0) - valorAbono);
-            recalcularPagosDesdeSaldo(p);
+                // Reducir saldo a favor y recalcular
+                p.saldoAFavor = Math.max(0, (p.saldoAFavor || 0) - valorAbono);
+                recalcularPagosDesdeSaldo(p);
 
-            localStorage.setItem('db_patrulleros_huila', JSON.stringify(personal));
-            renderizarPagosIndividual();
-            actualizarEstadisticas();
+                localStorage.setItem('db_patrulleros_huila', JSON.stringify(personal));
+                renderizarPagosIndividual();
+                actualizarEstadisticas();
+                mostrarAlerta("✅ Eliminado", "El registro de abono ha sido eliminado correctamente.");
+            });
         }
 
         // Recalcular qué meses están pagados basándose en el historial de abonos
@@ -2881,7 +2945,7 @@
             // Limpiar puntos, comas y espacios antes de parsear
             const rawVal = (document.getElementById('pago-abono').value || '').replace(/[\.,\s]/g, '');
             const abono = parseInt(rawVal) || 0;
-            if (abono <= 0) { alert('Ingresa un valor válido.'); return; }
+            if (abono <= 0) { mostrarAlerta("Atención", "Por favor, ingresa un valor de abono válido."); return; }
 
             if (!p.pagos) p.pagos = {};
             if (!p.saldoAFavor) p.saldoAFavor = 0;
@@ -2924,7 +2988,7 @@
             localStorage.setItem('db_patrulleros_huila', JSON.stringify(personal));
             renderizarPagosIndividual();
             actualizarEstadisticas();
-            alert(`✅ Abono de $${abono.toLocaleString('es-CO')} registrado correctamente.`);
+            mostrarAlerta("✅ Abono Registrado", `El abono de $${abono.toLocaleString('es-CO')} se ha procesado exitosamente.`);
         }
 
         // ==========================================
@@ -3045,35 +3109,34 @@
         }
 
         function borrarAbonoHistory(idxP, idxH) {
-            if (!confirm("¿Está seguro de eliminar este registro de abono?\n\nEsta acción revertirá el pago y aumentará la deuda del patrullero nuevamente.")) return;
+            mostrarAlerta("Confirmar Acción", "¿Está seguro de eliminar este registro de abono?\n\nEsta acción revertirá el pago y aumentará la deuda del patrullero nuevamente.", true, function () {
+                const p = personal[idxP];
+                if (!p || !p.historialAbonos) return;
 
-            const p = personal[idxP];
-            if (!p || !p.historialAbonos) return;
+                const abonoAEliminar = p.historialAbonos[idxH];
+                const valor = abonoAEliminar.valor;
 
-            const abonoAEliminar = p.historialAbonos[idxH];
-            const valor = abonoAEliminar.valor;
+                // Revertir efecto financiero
+                if ((p.saldoAFavor || 0) >= valor) {
+                    p.saldoAFavor -= valor;
+                } else {
+                    const faltante = valor - (p.saldoAFavor || 0);
+                    p.saldoAFavor = 0;
+                    p.ajusteDeuda = (p.ajusteDeuda || 0) + faltante;
+                }
 
-            // Revertir efecto financiero
-            // Si tiene saldo a favor, descontar de ahí primero
-            if ((p.saldoAFavor || 0) >= valor) {
-                p.saldoAFavor -= valor;
-            } else {
-                const faltante = valor - (p.saldoAFavor || 0);
-                p.saldoAFavor = 0;
-                p.ajusteDeuda = (p.ajusteDeuda || 0) + faltante;
-            }
+                // Eliminar del historial
+                p.historialAbonos.splice(idxH, 1);
 
-            // Eliminar del historial
-            p.historialAbonos.splice(idxH, 1);
-
-            localStorage.setItem('db_patrulleros_huila', JSON.stringify(personal));
-            actualizarContabilidad();
-            actualizarEstadisticas();
-            // Si el perfil está abierto, actualizar su vista individual
-            if (document.getElementById('details-section').style.display !== 'none') {
-                renderizarPagosIndividual();
-            }
-            alert("Registro eliminado y deuda actualizada.");
+                localStorage.setItem('db_patrulleros_huila', JSON.stringify(personal));
+                actualizarContabilidad();
+                actualizarEstadisticas();
+                // Si el perfil está abierto, actualizar su vista individual
+                if (document.getElementById('details-section').style.display !== 'none') {
+                    renderizarPagosIndividual();
+                }
+                mostrarAlerta("✅ Éxito", "Registro eliminado y deuda actualizada.");
+            });
         }
 
         function inicializarContabilidad() {
@@ -3403,17 +3466,381 @@
             balEl.style.color = bal >= 0 ? '#2ecc71' : '#e74c3c';
 
             renderChartCashflow(ingresos, egresos);
+            renderCierresCaja();
         }
 
-        function eliminarMovimiento(id) {
-            if (confirm('¿Eliminar este registro contable?')) {
-                const mov = contabilidad.find(m => m.id === id);
-                contabilidad = contabilidad.filter(m => m.id !== id);
-                localStorage.setItem('db_contabilidad_huila', JSON.stringify(contabilidad));
-                registrarLog('Movimiento Eliminado', mov ? mov.concepto : 'ID: ' + id);
-                renderContabilidad();
-                actualizarFinanzas();
+        function renderCierresCaja() {
+            const tbody = document.getElementById('cierres-tbody');
+            if (!tbody) return;
+
+            if (cierresCaja.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#555;">No hay cierres registrados.</td></tr>';
+                return;
             }
+
+            tbody.innerHTML = cierresCaja.map((c, i) => `
+                <tr>
+                    <td>${c.fechaCierre}</td>
+                    <td style="color:var(--gold); font-weight:700;">${c.periodo}</td>
+                    <td style="color:#2ecc71;">$${c.ingresos.toLocaleString('es-CO')}</td>
+                    <td style="color:#e74c3c;">$${c.egresos.toLocaleString('es-CO')}</td>
+                    <td style="font-weight:700;">$${(c.ingresos - c.egresos).toLocaleString('es-CO')}</td>
+                    <td>
+                        <div style="display:flex; gap:5px; justify-content:center;">
+                            <button onclick="descargarInformeCierre(${i})" style="background:#333; color:var(--gold); border:1px solid var(--gold); padding:4px 8px; border-radius:4px; cursor:pointer; font-size:10px;">📄 PDF</button>
+                            <button onclick="descargarExcelCierre(${i})" style="background:#1d6f42; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:10px;">📊 EXCEL</button>
+                            <button onclick="eliminarCierre(${i})" style="background:#c0392b; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:10px;">🗑️</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function eliminarCierre(index) {
+            const cierre = cierresCaja[index];
+            if (!cierre) return;
+
+            mostrarAlerta("Confirmar Eliminación", `¿Está seguro de eliminar el historial de cierre de ${cierre.periodo}?\n\nEsta acción eliminará el registro de este dispositivo, pero los datos permanecerán en la base de datos de la nube.`, true, function () {
+                cierresCaja.splice(index, 1);
+                localStorage.setItem('db_cierres_huila', JSON.stringify(cierresCaja));
+                renderCierresCaja();
+                mostrarAlerta("✅ Eliminado", "El registro ha sido eliminado localmente.");
+            });
+        }
+
+        async function sincronizarCierresConNube(cierre) {
+            try {
+                const params = conSesion(new URLSearchParams({
+                    accion: 'guardar_cierre',
+                    id: cierre.id,
+                    fecha: cierre.fechaCierre,
+                    periodo: cierre.periodo,
+                    ingresos: cierre.ingresos,
+                    egresos: cierre.egresos,
+                    // Serializar movimientos como texto para que quepan en una celda si es necesario, 
+                    // o simplemente guardar el resumen. El usuario pidió guardar regustros.
+                    movimientos: JSON.stringify(cierre.movimientos)
+                }));
+                fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' });
+            } catch (e) { console.error("Error sincronizando cierre:", e); }
+        }
+
+        async function cargarCierresDesdeNube() {
+            try {
+                const res = await fetch(SHEET_CIERRES_URL);
+                const text = await res.text();
+                const json = JSON.parse(text.replace(/^[^(]+\(/, '').replace(/\);?$/, ''));
+                const cols = json.table.cols.map(c => (c.label || '').toLowerCase().trim());
+                const rows = json.table.rows || [];
+
+                const cloudCierres = rows.map(row => {
+                    const obj = {};
+                    cols.forEach((col, i) => {
+                        let val = row.c[i] ? (row.c[i].v !== null ? row.c[i].v : '') : '';
+                        obj[col] = val;
+                    });
+                    return {
+                        id: obj.id || Date.now(),
+                        fechaCierre: obj.fecha || obj.fechacierre || '',
+                        periodo: obj.periodo || '',
+                        ingresos: parseFloat(obj.ingresos) || 0,
+                        egresos: parseFloat(obj.egresos) || 0,
+                        movimientos: obj.movimientos ? JSON.parse(obj.movimientos) : []
+                    };
+                });
+
+                if (cloudCierres.length > 0) {
+                    // Combinar con locales evitando duplicados por ID
+                    const localesIds = new Set(cierresCaja.map(c => String(c.id)));
+                    cloudCierres.forEach(cc => {
+                        if (!localesIds.has(String(cc.id))) {
+                            cierresCaja.push(cc);
+                        }
+                    });
+                    // Ordenar por fecha descendente (asumiendo ID es timestamp o similar)
+                    cierresCaja.sort((a, b) => b.id - a.id);
+                    localStorage.setItem('db_cierres_huila', JSON.stringify(cierresCaja));
+                    renderCierresCaja();
+                }
+            } catch (e) { console.error("Error cargando cierres de la nube:", e); }
+        }
+
+        function cerrarCaja() {
+            if (contabilidad.length === 0) {
+                mostrarAlerta("Error", "No hay movimientos registrados para cerrar la caja.");
+                return;
+            }
+
+            const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            const ahora = new Date();
+            const periodo = `${meses[ahora.getMonth()]} ${ahora.getFullYear()}`;
+
+            mostrarAlerta("Cierre de Caja", `¿Está seguro de realizar el cierre de caja de ${periodo}?\n\nEsto sincronizará los datos con la nube y reiniciará los valores locales.`, true, function () {
+                let ingresos = 0, egresos = 0;
+                contabilidad.forEach(m => {
+                    if (m.tipo === 'ingreso') ingresos += m.valor; else egresos += m.valor;
+                });
+
+                const nuevoCierre = {
+                    id: Date.now(),
+                    fechaCierre: ahora.toLocaleDateString(),
+                    periodo: periodo,
+                    ingresos: ingresos,
+                    egresos: egresos,
+                    movimientos: [...contabilidad]
+                };
+
+                cierresCaja.unshift(nuevoCierre);
+                localStorage.setItem('db_cierres_huila', JSON.stringify(cierresCaja));
+
+                sincronizarCierresConNube(nuevoCierre);
+
+                const paramsLimpiar = conSesion(new URLSearchParams({ accion: 'limpiar_movimientos' }));
+                fetch(APPS_SCRIPT_URL + '?' + paramsLimpiar.toString(), { method: 'GET', mode: 'no-cors' });
+
+                registrarLog('Cierre de Caja', `Cierre de ${periodo} sincronizado con la nube.`);
+
+                contabilidad = [];
+                localStorage.setItem('db_contabilidad_huila', JSON.stringify(contabilidad));
+
+                renderContabilidad();
+                generarPDFCierre(nuevoCierre);
+                mostrarAlerta("✅ Éxito", "Cierre de caja sincronizado y guardado correctamente.");
+            });
+        }
+
+        function descargarExcelCierre(index) {
+            const cierre = cierresCaja[index];
+            if (!cierre) return;
+
+            const filename = `Cierre_Caja_${cierre.periodo.replace(' ', '_')}.xls`;
+
+            // Creamos un HTML que Excel puede interpretar con ESTILOS CSS
+            let excelHtml = `
+                <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+                <head>
+                    <meta charset="UTF-8">
+                    <style>
+                        .header { background-color: #000000; color: #d4af37; font-family: Arial; font-size: 16pt; font-weight: bold; text-align: center; }
+                        .sub-header { background-color: #1a1a1a; color: #ffffff; font-family: Arial; font-size: 12pt; text-align: center; }
+                        .section-title { background-color: #d4af37; color: #000000; font-family: Arial; font-size: 11pt; font-weight: bold; }
+                        .label { background-color: #f2f2f2; font-weight: bold; font-family: Arial; }
+                        .value { font-family: Arial; }
+                        .table-header { background-color: #000000; color: #d4af37; font-weight: bold; text-align: center; border: 0.5pt solid #444; }
+                        .row-ingreso { background-color: #eafaf1; color: #27ae60; border: 0.5pt solid #ccc; }
+                        .row-egreso { background-color: #fdedec; color: #c0392b; border: 0.5pt solid #ccc; }
+                        .total-row { background-color: #d4af37; font-weight: bold; border-top: 2pt solid #000; }
+                        td { padding: 5px; border: 0.5pt solid #eeeeee; }
+                    </style>
+                </head>
+                <body>
+                    <table>
+                        <tr><td colspan="5" class="header">REPORTE PROFESIONAL DE CIERRE DE CAJA</td></tr>
+                        <tr><td colspan="5" class="sub-header">PATRULLEROS CÍVICOS - TRÁNSITO DEL HUILA</td></tr>
+                        <tr><td colspan="5"></td></tr>
+                        
+                        <tr>
+                            <td colspan="2" class="section-title">INFORMACIÓN DEL PERIODO</td>
+                            <td></td>
+                            <td colspan="2" class="section-title">RESUMEN ECONÓMICO</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Periodo:</td><td class="value">${cierre.periodo}</td>
+                            <td></td>
+                            <td class="label">TOTAL INGRESOS:</td><td class="value" style="color:#27ae60; font-weight:bold;">$${cierre.ingresos.toLocaleString('es-CO')}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Fecha Cierre:</td><td class="value">${cierre.fechaCierre}</td>
+                            <td></td>
+                            <td class="label">TOTAL EGRESOS:</td><td class="value" style="color:#c0392b; font-weight:bold;">$${cierre.egresos.toLocaleString('es-CO')}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">ID Registro:</td><td class="value" style="mso-number-format:'@'">${cierre.id}</td>
+                            <td></td>
+                            <td class="label" style="background:#000; color:#d4af37;">BALANCE NETO:</td><td class="value" style="background:#000; color:#d4af37; font-weight:bold;">$${(cierre.ingresos - cierre.egresos).toLocaleString('es-CO')}</td>
+                        </tr>
+                        
+                        <tr><td colspan="5"></td></tr>
+                        <tr><td colspan="5" class="section-title" style="text-align:center;">DETALLE CRONOLÓGICO DE MOVIMIENTOS</td></tr>
+                        
+                        <tr class="table-header">
+                            <td>FECHA</td>
+                            <td colspan="2">CONCEPTO / DESCRIPCIÓN</td>
+                            <td>CATEGORÍA</td>
+                            <td>VALOR ($)</td>
+                        </tr>
+            `;
+
+            cierre.movimientos.forEach(m => {
+                const className = m.tipo === 'ingreso' ? 'row-ingreso' : 'row-egreso';
+                excelHtml += `
+                    <tr class="${className}">
+                        <td style="text-align:center;">${m.fecha}</td>
+                        <td colspan="2">${m.concepto.toUpperCase()}</td>
+                        <td style="text-align:center; font-weight:bold;">${m.tipo.toUpperCase()}</td>
+                        <td style="text-align:right; font-weight:bold;">$${m.valor.toLocaleString('es-CO')}</td>
+                    </tr>
+                `;
+            });
+
+            excelHtml += `
+                    </table>
+                <\/body>
+                <\/html>
+            `;
+
+            // Crear el Blob y descargar
+            const blob = new Blob([excelHtml], { type: 'application/vnd.ms-excel' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        async function descargarInformeCierre(index) {
+            const cierre = cierresCaja[index];
+            if (cierre) generarPDFCierre(cierre);
+        }
+
+        async function generarPDFCierre(cierre) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            doc.setFillColor(15, 15, 15);
+            doc.rect(0, 0, 210, 45, 'F');
+
+            doc.setTextColor(212, 175, 55);
+            doc.setFontSize(22);
+            doc.setFont("helvetica", "bold");
+            doc.text("PATRULLEROS CÍVICOS", 105, 20, { align: "center" });
+            doc.setFontSize(14);
+            doc.text("TRÁNSITO DEL HUILA", 105, 28, { align: "center" });
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(10);
+            doc.text("REPORTE MENSUAL DE CIERRE DE CAJA", 105, 38, { align: "center" });
+
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "bold");
+            doc.text(`PERIODO: ${cierre.periodo}`, 20, 60);
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(10);
+            doc.text(`Fecha de Cierre: ${cierre.fechaCierre}`, 20, 67);
+
+            doc.setDrawColor(212, 175, 55);
+            doc.setLineWidth(0.5);
+            doc.line(20, 75, 190, 75);
+
+            doc.setFont("helvetica", "bold");
+            doc.text("RESUMEN GENERAL", 20, 85);
+
+            doc.setFont("helvetica", "normal");
+            doc.text("Total Ingresos:", 30, 95);
+            doc.setTextColor(39, 174, 96);
+            doc.text(`$${cierre.ingresos.toLocaleString('es-CO')}`, 100, 95);
+
+            doc.setTextColor(0, 0, 0);
+            doc.text("Total Egresos:", 30, 102);
+            doc.setTextColor(192, 57, 43);
+            doc.text(`$${cierre.egresos.toLocaleString('es-CO')}`, 100, 102);
+
+            doc.setDrawColor(200, 200, 200);
+            doc.line(30, 107, 130, 107);
+
+            doc.setTextColor(0, 0, 0);
+            doc.setFont("helvetica", "bold");
+            doc.text("BALANCE FINAL:", 30, 115);
+            const balance = cierre.ingresos - cierre.egresos;
+            doc.setTextColor(balance >= 0 ? 39 : 192, balance >= 0 ? 174 : 57, balance >= 0 ? 96 : 43);
+            doc.text(`$${balance.toLocaleString('es-CO')}`, 100, 115);
+
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(12);
+            doc.text("DETALLE DE MOVIMIENTOS", 20, 130);
+
+            let y = 140;
+            doc.setFillColor(245, 245, 245);
+            doc.rect(20, y - 5, 170, 7, 'F');
+            doc.setFontSize(9);
+            doc.text("FECHA", 22, y);
+            doc.text("CONCEPTO", 45, y);
+            doc.text("TIPO", 130, y);
+            doc.text("VALOR", 160, y);
+
+            y += 10;
+            doc.setFont("helvetica", "normal");
+            cierre.movimientos.forEach((m, idx) => {
+                if (y > 270) {
+                    doc.addPage();
+                    y = 20;
+                }
+                doc.text(m.fecha, 22, y);
+                doc.text(m.concepto.substring(0, 45), 45, y);
+                doc.text(m.tipo.toUpperCase(), 130, y);
+                doc.text(`$${m.valor.toLocaleString('es-CO')}`, 160, y);
+                y += 7;
+                doc.setDrawColor(240, 240, 240);
+                doc.line(20, y - 4, 190, y - 4);
+            });
+
+            if (y > 240) { doc.addPage(); y = 40; } else { y += 20; }
+            doc.setDrawColor(0, 0, 0);
+            doc.line(40, y + 20, 90, y + 20);
+            doc.line(120, y + 20, 170, y + 20);
+            doc.setFontSize(8);
+            doc.text("TESORERÍA / ADMINISTRACIÓN", 40, y + 25);
+            doc.text("PRESIDENCIA / FISCALÍA", 120, y + 25);
+
+            doc.save(`Cierre_Caja_${cierre.periodo.replace(' ', '_')}.pdf`);
+        }
+
+        async function cargarMovimientosDesdeNube() {
+            try {
+                const res = await fetch(SHEET_MOVIMIENTOS_URL);
+                const text = await res.text();
+                const json = JSON.parse(text.replace(/^[^(]+\(/, '').replace(/\);?$/, ''));
+                const cols = json.table.cols.map(c => (c.label || '').toLowerCase().trim());
+                const rows = json.table.rows || [];
+
+                const cloudMovs = rows.map(row => {
+                    const obj = {};
+                    cols.forEach((col, i) => {
+                        let val = row.c[i] ? (row.c[i].v !== null ? row.c[i].v : '') : '';
+                        obj[col] = val;
+                    });
+                    return {
+                        id: parseFloat(obj.id) || Date.now(),
+                        fecha: obj.fecha || '',
+                        concepto: obj.concepto || '',
+                        tipo: obj.tipo || 'ingreso',
+                        valor: parseFloat(obj.valor) || 0
+                    };
+                });
+
+                if (cloudMovs.length > 0) {
+                    contabilidad = cloudMovs;
+                    localStorage.setItem('db_contabilidad_huila', JSON.stringify(contabilidad));
+                    renderContabilidad();
+                    actualizarFinanzas();
+                }
+            } catch (e) { console.error("Error cargando movimientos:", e); }
+        }
+
+        function sincronizarMovimientoConNube(m) {
+            try {
+                const params = conSesion(new URLSearchParams({
+                    accion: 'guardar_movimiento',
+                    id: m.id,
+                    fecha: m.fecha,
+                    concepto: m.concepto,
+                    tipo: m.tipo,
+                    valor: m.valor
+                }));
+                fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' });
+            } catch (e) { }
         }
 
         function abrirModalContable(tipo, editId = null) {
@@ -3452,12 +3879,15 @@
 
             if (!concepto || isNaN(valor) || valor <= 0 || !fecha) { alert("Completa todos los campos con valores válidos."); return; }
 
+            let mov;
             if (editId) {
                 const idx = contabilidad.findIndex(x => x.id == editId);
                 contabilidad[idx] = { ...contabilidad[idx], concepto, valor, fecha };
+                mov = contabilidad[idx];
                 registrarLog('Movimiento Editado', `${concepto}: $${valor}`);
             } else {
-                contabilidad.push({ id: Date.now(), fecha, concepto, tipo, valor });
+                mov = { id: Date.now(), fecha, concepto, tipo, valor };
+                contabilidad.push(mov);
                 registrarLog(`Registro Contable (${tipo})`, `${concepto}: $${valor}`);
             }
 
@@ -3737,7 +4167,8 @@
             if (!p.archivos) p.archivos = { hojaVida: "", certEstudio: "", certBachiller: "" };
 
             document.getElementById('edit-name').value = p.nombre;
-            document.getElementById('edit-rango').value = p.rango || "";
+            document.getElementById('edit-rango').value = p.rango || "PATRULLERO CIVICO";
+            document.getElementById('edit-rango').readOnly = !esAdmin;
             if (document.getElementById('edit-doc-type')) {
                 document.getElementById('edit-doc-type').value = p.tipoDoc || "C.C.";
             }
@@ -3787,7 +4218,11 @@
             }
 
             const chkDatos = document.getElementById('check-datos');
-            if (chkDatos) { chkDatos.checked = false; validarAceptacionDatos(); }
+            if (chkDatos) {
+                chkDatos.checked = p.terminosAceptados || false;
+                chkDatos.disabled = p.terminosAceptados || false;
+                validarAceptacionDatos();
+            }
 
             aplicarConfigGlobal();
             updateLivePreview();
@@ -3998,8 +4433,10 @@ Podrás subir uno nuevo después.`)) {
         function validarAceptacionDatos() {
             const chk = document.getElementById('check-datos');
             const btn = document.getElementById('btn-guardar-carnet');
+            const p = personal[indexActual];
+
             if (chk && btn) {
-                if (chk.checked) {
+                if (chk.checked || (p && p.terminosAceptados)) {
                     btn.style.opacity = "1";
                     btn.style.pointerEvents = "auto";
                 } else {
@@ -4011,8 +4448,14 @@ Podrás subir uno nuevo después.`)) {
 
         function guardarCarnetUsuario() {
             personal[indexActual].carnetGuardado = true;
+            personal[indexActual].terminosAceptados = true;
             localStorage.setItem('db_patrulleros_huila', JSON.stringify(personal));
-            alert("Su carné se ha creado exitosamente.");
+
+            // Deshabilitar checkbox tras guardar
+            const chk = document.getElementById('check-datos');
+            if (chk) chk.disabled = true;
+
+            alert("✅ Su carné se ha creado exitosamente y los términos han sido aceptados permanentemente.");
         }
 
         // ==========================================
@@ -4032,12 +4475,16 @@ Podrás subir uno nuevo después.`)) {
             const wasFlipped = cardElement.classList.contains('flipped');
             cardElement.classList.remove('flipped');
             cardElement.style.perspective = 'none';
+            // Forzamos posicionamiento relativo y visibilidad para asegurar la captura
             frente.style.position = 'relative';
             frente.style.transform = 'none';
             frente.style.backfaceVisibility = 'visible';
+            frente.style.display = 'flex';
             respaldo.style.position = 'relative';
             respaldo.style.transform = 'none';
             respaldo.style.backfaceVisibility = 'visible';
+            respaldo.style.display = 'flex';
+            respaldo.style.top = '0';
 
             try {
                 // Esperar un frame para que el DOM se actualice
@@ -4054,10 +4501,26 @@ Podrás subir uno nuevo después.`)) {
                 const canvasF = await html2canvas(frente, opciones);
                 const canvasR = await html2canvas(respaldo, { ...opciones, backgroundColor: '#ffffff' });
 
-                const doc = new jsPDF({ unit: 'mm', format: [54, 86], orientation: 'portrait' });
-                doc.addImage(canvasF.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 54, 86);
-                doc.addPage();
-                doc.addImage(canvasR.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 54, 86);
+                // FUNCIÓN PARA ROTAR CANVAS 90 GRADOS
+                const rotateCanvas = (srcCanvas) => {
+                    const offCanvas = document.createElement('canvas');
+                    offCanvas.width = srcCanvas.height;
+                    offCanvas.height = srcCanvas.width;
+                    const ctx = offCanvas.getContext('2d');
+                    ctx.translate(offCanvas.width / 2, offCanvas.height / 2);
+                    ctx.rotate(-90 * Math.PI / 180); // Rotar 90 CCW
+                    ctx.drawImage(srcCanvas, -srcCanvas.width / 2, -srcCanvas.height / 2);
+                    return offCanvas.toDataURL('image/jpeg', 1.0);
+                };
+
+                const imgRotatedF = rotateCanvas(canvasF);
+                const imgRotatedR = rotateCanvas(canvasR);
+
+                const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: [85.6, 54] });
+                doc.addImage(imgRotatedF, 'JPEG', 0, 0, 85.6, 54);
+
+                doc.addPage([85.6, 54], 'l');
+                doc.addImage(imgRotatedR, 'JPEG', 0, 0, 85.6, 54);
 
                 const nombre = personal[indexActual].nombre.replace(/[^a-zA-Z0-9]/g, '_');
                 doc.save(`Carnet_${nombre}.pdf`);
@@ -4100,7 +4563,7 @@ Podrás subir uno nuevo después.`)) {
                 });
             } catch (e) {
                 console.error('Error leyendo Sheets:', e);
-                return [];
+                return null;
             }
         }
 
@@ -4156,19 +4619,21 @@ Podrás subir uno nuevo después.`)) {
                 const emailSync = p.email || (userApp ? userApp.email : '');
                 const passSync = p.pass || (userApp ? userApp.pass : '');
 
-                const params = new URLSearchParams({
+                const params = conSesion(new URLSearchParams({
                     documento: p.documento,
                     nombre: p.nombre,
                     email: emailSync,
                     password: passSync,
-                    rango: p.rango || 'PATRULLERO',
+                    pass: passSync, // Parámetro redundante para asegurar compatibilidad
+                    rango: p.rango || 'PATRULLERO CIVICO',
                     rh: p.rh,
                     cel: p.cel || '',
+                    celular: p.cel || '',
+                    telefono: p.cel || '',
                     status: p.status || 'activo',
                     foto: (p.foto && p.foto.startsWith('http')) ? p.foto : ''
-                });
+                }));
 
-                // NOTA: Se ha removido el appkey, debes actualizar Código.gs
                 await fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' });
 
                 registrarLog('Actualización Patrullero', `Expediente de ${sanitizar(p.nombre)} guardado`);
@@ -4186,12 +4651,15 @@ Podrás subir uno nuevo después.`)) {
         }
 
         // 10. UTILIDADES GENERALES
-        function nuevoPatrullero() {
+        async function nuevoPatrullero() {
+            const defaultPass = await hashSeguro("12345678"); // Contraseña predeterminada segura
             const nuevo = {
                 nombre: "NUEVO REGISTRO ADMIN",
                 rango: "PATRULLERO",
                 tipoDoc: "C.C.",
                 documento: "000.000",
+                email: "aspirante@ejemplo.com",
+                pass: defaultPass,
                 rh: "O+",
                 foto: "",
                 firma: "",
@@ -4199,9 +4667,19 @@ Podrás subir uno nuevo después.`)) {
                 fase2Completada: true,
                 carnetGuardado: true,
                 fechaIngreso: new Date().toISOString().split('T')[0],
-                archivos: { hojaVida: "", certEstudio: "", certBachiller: "" }
+                archivos: { hojaVida: "", certEstudio: "", certBachiller: "" },
+                condecoraciones: [],
+                pagos: {},
+                saldoAFavor: 0
             };
             personal.push(nuevo);
+
+            // También agregar a usuariosApp para permitir login
+            if (!usuariosApp.find(u => u.doc === nuevo.documento)) {
+                usuariosApp.push({ nom: nuevo.nombre, doc: nuevo.documento, email: nuevo.email, pass: nuevo.pass, rol: 'usuario' });
+                localStorage.setItem('db_usuarios_huila', JSON.stringify(usuariosApp));
+            }
+
             registrarLog('Creación Registro', 'Nuevo patrullero creado manualmente por Admin');
             renderizarLista();
             verDetalle(personal.length - 1);
@@ -4243,7 +4721,21 @@ Podrás subir uno nuevo después.`)) {
                 } catch (e) { }
                 try {
                     var datosNube = await leerDesdeSheets();
-                    if (datosNube && datosNube.length > 0) {
+                    if (datosNube !== null) {
+                        // Sincronizar eliminaciones: Si está local pero no en la nube, se borra
+                        const docsNube = datosNube.map(r => (r.documento || '').replace(/\./g, '').trim());
+
+                        personal = personal.filter(p => {
+                            const docLocal = (p.documento || '').replace(/\./g, '').trim();
+                            return docsNube.includes(docLocal);
+                        });
+
+                        usuariosApp = usuariosApp.filter(u => {
+                            const docUser = (u.doc || '').replace(/\./g, '').trim();
+                            // Mantener admin y registros que sí estén en la nube
+                            return docsNube.includes(docUser) || u.doc === 'Admin_Huila' || u.doc === 'Admin';
+                        });
+
                         datosNube.forEach(function (pNube) {
                             var docNube = (pNube.documento || '').replace(/\./g, '').trim();
                             var localIndex = personal.findIndex(function (p) { return (p.documento || '').replace(/\./g, '').trim() === docNube; });
@@ -4252,13 +4744,23 @@ Podrás subir uno nuevo después.`)) {
                                 personal[localIndex].rango = pNube.rango || personal[localIndex].rango;
                                 personal[localIndex].rh = pNube.rh || personal[localIndex].rh;
                                 personal[localIndex].status = pNube.status || personal[localIndex].status;
+                                personal[localIndex].email = pNube.email || personal[localIndex].email;
+                                personal[localIndex].cel = pNube.cel || pNube.celular || pNube.telefono || personal[localIndex].cel;
+                                personal[localIndex].pass = pNube.password || pNube.pass || personal[localIndex].pass;
                                 if (pNube.foto && pNube.foto.startsWith('http')) personal[localIndex].foto = pNube.foto;
                                 if (pNube.firma && pNube.firma.startsWith('http')) personal[localIndex].firma = pNube.firma;
                             } else {
-                                personal.push({ nombre: pNube.nombre || 'Sin nombre', rango: pNube.rango || 'PATRULLERO', tipoDoc: 'C.C.', documento: pNube.documento || '', rh: pNube.rh || 'O+', foto: pNube.foto || '', firma: pNube.firma || '', status: pNube.status || 'activo', fase2Completada: true, carnetGuardado: true, fechaIngreso: '', fechaInactivo: '', archivos: { hojaVida: '', certEstudio: '', certBachiller: '' }, condecoraciones: [], pagos: {}, saldoAFavor: 0 });
+                                const pNuevo = { nombre: pNube.nombre || 'Sin nombre', rango: pNube.rango || 'PATRULLERO', tipoDoc: 'C.C.', documento: pNube.documento || '', email: pNube.email || '', pass: pNube.password || pNube.pass || '', cel: pNube.cel || pNube.celular || pNube.telefono || '', rh: pNube.rh || 'O+', foto: pNube.foto || '', firma: pNube.firma || '', status: pNube.status || 'activo', fase2Completada: true, carnetGuardado: true, fechaIngreso: '', fechaInactivo: '', archivos: { hojaVida: '', certEstudio: '', certBachiller: '' }, condecoraciones: [], pagos: {}, saldoAFavor: 0 };
+                                personal.push(pNuevo);
+
+                                // Asegurar que el usuario pueda loguearse localmente
+                                if (!usuariosApp.find(u => u.doc === pNuevo.documento)) {
+                                    usuariosApp.push({ nom: pNuevo.nombre, doc: pNuevo.documento, email: pNuevo.email, pass: pNuevo.pass, cel: pNuevo.cel, rol: 'usuario' });
+                                }
                             }
                         });
                         localStorage.setItem('db_patrulleros_huila', JSON.stringify(personal));
+                        localStorage.setItem('db_usuarios_huila', JSON.stringify(usuariosApp));
                     }
                 } catch (e) { }
             }
@@ -4291,23 +4793,30 @@ Podrás subir uno nuevo después.`)) {
         }
 
         async function eliminarPatrullero() {
-            if (!confirm("¿Estás seguro de eliminar este registro?\n\nEsta acción NO se puede deshacer.")) return;
-            const p = personal[indexActual];
-            personal.splice(indexActual, 1);
-            localStorage.setItem('db_patrulleros_huila', JSON.stringify(personal));
-            registrarLog('Eliminación', `Se eliminó el expediente de ${sanitizar(p.nombre)}`);
-            // Notificar a Google Sheets en paralelo (no bloqueante)
-            try {
-                const params = conSesion(new URLSearchParams({ accion: 'eliminar', documento: p.documento }));
-                fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' }).catch(() => { });
-            } catch (e) { }
-            alert("✅ Registro eliminado correctamente.");
-            // Actualizar TODAS las vistas del dashboard
-            await showDashboard();
-            renderizarLista();
-            actualizarEstadisticas();
-            actualizarEstadisticasUnits();
-            renderRecentUnits();
+            mostrarAlerta("Eliminar Expediente", "¿Estás seguro de eliminar este registro?\n\nEsta acción NO se puede deshacer y borrará los datos de la nube.", true, async function () {
+                const p = personal[indexActual];
+                const docEliminar = p.documento;
+                personal.splice(indexActual, 1);
+                localStorage.setItem('db_patrulleros_huila', JSON.stringify(personal));
+
+                // También eliminar de la base de usuarios para permitir re-registro
+                usuariosApp = usuariosApp.filter(u => u.doc !== docEliminar);
+                localStorage.setItem('db_usuarios_huila', JSON.stringify(usuariosApp));
+
+                registrarLog('Eliminación', `Se eliminó el expediente de ${sanitizar(p.nombre)}`);
+                // Notificar a Google Sheets en paralelo (no bloqueante)
+                try {
+                    const params = conSesion(new URLSearchParams({ accion: 'eliminar', documento: docEliminar }));
+                    fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' }).catch(() => { });
+                } catch (e) { }
+
+                await showDashboard();
+                renderizarLista();
+                actualizarEstadisticas();
+                actualizarEstadisticasUnits();
+                renderRecentUnits();
+                mostrarAlerta("✅ Éxito", "Registro eliminado correctamente.");
+            });
         }
 
         // Detectar si entraron por QR o solo están recargando la página
@@ -4422,7 +4931,9 @@ Podrás subir uno nuevo después.`)) {
 
             // Inicialización normal del sistema (sin parámetro ?carnet=)
             renderizarLista();
-        }
+            cargarCierresDesdeNube();
+            cargarMovimientosDesdeNube();
+        };
     </script>
     <!-- MODAL: ACTIVIDAD -->
     <div id="modal-actividad" class="modal-overlay">
@@ -4518,6 +5029,68 @@ Podrás subir uno nuevo después.`)) {
         </div>
     </div>
 
+    <!-- MODAL DE ALERTAS/CONFIRMACIONES PERSONALIZADAS -->
+    <div id="modal-premium-alert" class="modal-overlay" style="display:none; z-index:10000;">
+        <div class="modal-content" style="max-width:340px; border:1px solid var(--gold);">
+            <div class="modal-header">
+                <h2 id="premium-alert-title">Aviso del Sistema</h2>
+            </div>
+            <div id="premium-alert-body" style="color:#ddd; font-size:14px; margin:10px 0 20px; line-height:1.5;"></div>
+            <div class="modal-footer" id="premium-alert-footer">
+                <button class="modal-btn modal-btn-confirm" id="premium-alert-ok">ENTENDIDO</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sistema de Alertas Premium
+        function mostrarAlerta(titulo, mensaje, esConfirmacion = false, callback = null) {
+            const modal = document.getElementById('modal-premium-alert');
+            const titleEl = document.getElementById('premium-alert-title');
+            const bodyEl = document.getElementById('premium-alert-body');
+            const footer = document.getElementById('premium-alert-footer');
+
+            if (!modal || !titleEl || !bodyEl) return;
+
+            titleEl.innerText = titulo;
+            bodyEl.innerText = mensaje;
+            modal.style.display = 'flex';
+
+            footer.innerHTML = '';
+            if (esConfirmacion) {
+                const btnCancel = document.createElement('button');
+                btnCancel.className = 'modal-btn modal-btn-cancel';
+                btnCancel.innerText = 'CANCELAR';
+                btnCancel.onclick = () => { modal.style.display = 'none'; };
+                footer.appendChild(btnCancel);
+
+                const btnConfirm = document.createElement('button');
+                btnConfirm.className = 'modal-btn modal-btn-confirm';
+                btnConfirm.innerText = 'CONFIRMAR';
+                btnConfirm.onclick = () => {
+                    modal.style.display = 'none';
+                    if (callback) callback();
+                };
+                footer.appendChild(btnConfirm);
+            } else {
+                const btnOk = document.createElement('button');
+                btnOk.className = 'modal-btn modal-btn-confirm';
+                btnOk.innerText = 'ENTENDIDO';
+                btnOk.onclick = () => {
+                    modal.style.display = 'none';
+                    if (callback) callback();
+                };
+                footer.appendChild(btnOk);
+            }
+        }
+
+        function cerrarModal(id) {
+            const m = document.getElementById(id);
+            if (m) m.style.display = 'none';
+        }
+    </script>
 </body>
+
+</html>
 
 </html>
