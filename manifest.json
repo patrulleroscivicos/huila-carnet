@@ -1,0 +1,23 @@
+{
+  "name": "Sistema Patrulleros Civicos",
+  "short_name": "Patrulleros Civicos",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#d4af37",
+  "description": "Software de gestión para patrulleros.",
+  "icons": [
+    {
+      "src": "fondologo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "fondologo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
