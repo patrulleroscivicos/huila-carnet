@@ -3539,11 +3539,20 @@
             const cierre = cierresCaja[index];
             if (!cierre) return;
 
-            mostrarAlerta("Confirmar Eliminación", `¿Está seguro de eliminar el historial de cierre de ${cierre.periodo}?\n\nEsta acción eliminará el registro de este dispositivo, pero los datos permanecerán en la base de datos de la nube.`, true, function () {
+            mostrarAlerta("Confirmar Eliminación", `¿Está seguro de eliminar el historial de cierre de ${cierre.periodo}?\n\nEsta acción eliminará el registro de este dispositivo y de la base de datos en la nube.`, true, function () {
+                const idEliminar = cierre.id;
                 cierresCaja.splice(index, 1);
                 localStorage.setItem('db_cierres_huila', JSON.stringify(cierresCaja));
+                
+                // Sincronizar eliminación con la nube
+                const params = conSesion(new URLSearchParams({
+                    accion: 'eliminar_cierre',
+                    id: idEliminar
+                }));
+                fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' });
+
                 renderCierresCaja();
-                mostrarAlerta("✅ Eliminado", "El registro ha sido eliminado localmente.");
+                mostrarAlerta("✅ Eliminado", "El registro ha sido eliminado.");
             });
         }
 
@@ -3863,7 +3872,6 @@
                     contabilidad = cloudMovs;
                     localStorage.setItem('db_contabilidad_huila', JSON.stringify(contabilidad));
                     renderContabilidad();
-                    actualizarFinanzas();
                 }
             } catch (e) { console.error("Error cargando movimientos:", e); }
         }
@@ -3879,7 +3887,28 @@
                     valor: m.valor
                 }));
                 fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' });
-            } catch (e) { }
+            } catch (e) { console.error("Error sincronizando movimiento:", e); }
+        }
+
+        function eliminarMovimiento(id) {
+            mostrarAlerta("Confirmar Eliminación", "¿Está seguro de eliminar este movimiento del historial?", true, function () {
+                const idx = contabilidad.findIndex(x => x.id == id);
+                if (idx !== -1) {
+                    const mov = contabilidad[idx];
+                    contabilidad.splice(idx, 1);
+                    localStorage.setItem('db_contabilidad_huila', JSON.stringify(contabilidad));
+
+                    // Sincronizar eliminación con la nube
+                    const params = conSesion(new URLSearchParams({
+                        accion: 'eliminar_movimiento',
+                        id: id
+                    }));
+                    fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' });
+
+                    registrarLog('Movimiento Eliminado', `${mov.concepto}: $${mov.valor}`);
+                    renderContabilidad();
+                }
+            });
         }
 
         function abrirModalContable(tipo, editId = null) {
@@ -3931,9 +3960,9 @@
             }
 
             localStorage.setItem('db_contabilidad_huila', JSON.stringify(contabilidad));
+            sincronizarMovimientoConNube(mov);
             cerrarModal('modal-contable');
             renderContabilidad();
-            actualizarFinanzas();
         }
 
         function renderChartCashflow(ing, egr) {
